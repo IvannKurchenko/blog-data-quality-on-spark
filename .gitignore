@@ -69,3 +69,4 @@ Thumbs.db
 *.pem
 *.key
 *.crt
+.local
