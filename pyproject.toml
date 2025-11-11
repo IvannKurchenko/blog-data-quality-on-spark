@@ -1,0 +1,10 @@
+[project]
+name = "data-quality-on-spark"
+version = "0.1.0"
+dependencies = [
+    "pyspark == 4.0.0",
+    "dbldatagen==0.4.0.post1",
+    "jmespath==1.0.1",
+    "numpy==2.3.4",
+    "delta-spark"
+]
