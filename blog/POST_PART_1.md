@@ -1,10 +1,13 @@
-## Data quality on Spark
+## Data quality on Spark: Theory
 
 ### Introduction
 In the following series of blog posts we will reveal a topic of Data Quality from both theoretical and practical 
 implementation using Spark framework and compare corresponding tools for this job. 
 Although commercial market for Data Quality evaluation is pretty wide and worth looking, the focus of this series is 
 OSS solutions.
+
+This first part of the series gives a short introduction into of data quality topic and cover first framework - 
+Greate Expectations. 
 
 ### Definition of Data Quality
 The definition of Data Quality given in many resource, which can be summarised measurement of how well the data represents
@@ -43,7 +46,7 @@ For example: proportion of records upserted in the past 24 hours.
 Data quality properties: "Update Frequency", "Timelines of Update";
 
 #### DAMA-DMBOK
-"Data Management Body of Knowledge" one of the important books in a field of Data Management 
+["Data Management Body of Knowledge"](https://dama.org/learning-resources/dama-data-management-body-of-knowledge-dmbok/) one of the important books in a field of Data Management 
 giving valuable recommendations, in particular covering subject of Data Quality (Chapter 16).
 The book reveals a subject of Data Quality from the perspective of the following dimensions:
 
@@ -73,7 +76,7 @@ For example: proportion of lead contacts records in CRM dataset.
 
 Accuracy - whether records in data-set accurately reflect real world facts or knowledge.
 For example: proportion of customer address records that were verified using trusted external data-sources such
-as data from government bodies like Chamber of Commerce or Ministry of Trade. 
+as data from government bodies like Chamber of Commerce or Ministry of Trade.
 
 #### Summary
 Aforementioned Data Quality Dimensions (DQD*) could be summarized in the following list:
@@ -89,6 +92,37 @@ Aforementioned Data Quality Dimensions (DQD*) could be summarized in the followi
 
 Although Data Quality definitions above are proposed by reputable bodies, it worth mention that final implementation
 of Data Quality measurements and their importance are highly depends on specific use case.
+
+
+### Methodology
+In order to fairly compare and evaluate each Data Quality framework in this series, they will be tested under same conditions.
+We will check quality of [Airline](https://relational.fel.cvut.cz/dataset/Airline) data-set from "CTU Relational Learning Repository" repository.
+This data-set represents flight data in US for 2016 year, consisting of main `On_Time_On_Time_Performance_2016_1` table and several dimensions. 
+The data set is not too complex, represents real world data and slightly messy, which is a good combination to for case study.
+The goal is to measure this data set quality per each dimension with corresponding metrics:
+
+Accuracy & Validity 
+- Proportion of `TailNum` column values that are valid combinations (see [Aircraft registration](https://en.wikipedia.org/wiki/Aircraft_registration))
+- Proportion of valid `OriginState` and `DestinationState` (see [States Abbreviations](https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/appendix_a.html))
+
+Completeness
+- Proportion of `null` values in `On_Time_On_Time_Performance_2016_1` fact table.
+
+Consistency & Integrity
+- Proportion of wrong foreign key columns like `AirlineID`, `OriginAirportID` etc.
+
+Credibility / Accuracy
+- Validate `TailNum` in https://aerobasegroup.com 
+
+Currentnes / Currency
+- Proportion of records older than a year ago.
+
+Reasonableness
+- Average speed calculated based on `AirTime` (in minutes) and `Distance` is withing modern Aircraft average speed.
+- 90th percentile of `DepDelay` is under 60 minutes; 
+
+Uniqueness
+- Proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID` and `DestAirportID`.
 
 # References
 Bellow is the list of other sources used to write this post:
