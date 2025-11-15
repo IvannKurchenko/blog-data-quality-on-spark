@@ -12,7 +12,7 @@ a real world facts. Although this definition gives a good sense what is meant by
 enough to be used for any implementation. So let's review more detailed definition by public standards and professional 
 literature.
 
-### ISO-25000
+#### ISO-25000
 ISO-25000 is a series of international standards describing evaluation and management of quality of informational systems. 
 ISO-25012 and ISO-25024 are two standards from the series that are primary focus is data quality.  
 
@@ -38,12 +38,60 @@ Data quality properties:  "Referential Integrity", "Risk Of Inconsistency", "Sem
 Credibility - how much we can be trusted. For example: proportion of geo-addresses confirmed via external sources like OSM.
 Data quality properties: "Data values Credibility", "Source Credibility";
 
-Currents - how fresh the data is.
+Currentnes - how fresh the data is.
 For example: proportion of records upserted in the past 24 hours.   
 Data quality properties: "Update Frequency", "Timelines of Update";
 
+#### DAMA-DMBOK
+"Data Management Body of Knowledge" one of the important books in a field of Data Management 
+giving valuable recommendations, in particular covering subject of Data Quality (Chapter 16).
+The book reveals a subject of Data Quality from the perspective of the following dimensions:
+
+Validity - whether values are correct from domain knowledge perspective.
+For example: proportion of numerical records within expected range for an age in socio-demographic data-set.
+
+Completeness - whether required data is present. 
+For example: proportion of absent or blank values for required columns in a data-set.
+
+Consistency - whether data encoded the same way all over a places.
+For example: proportion of records complying same address format between tables in CRM dataset.
+
+Integrity - whether references across the data-sets are consistent.
+For example: proportion of records with broken foreign keys between department and employee in data-set of organization structure. 
+
+Timeliness - whether data is updated within expected time range.
+For example: data-set reflecting sales quarter results should be completely updated within two weeks.   
+
+Currency - whether data is fresh enough and reflects current state of world.
+For example: proportion of records which were inserted not more than 1 hour ago in data-set of IoT devices readings.  
+
+Reasonableness - whether high level values patterns are close to expectations. 
+For example: house prices are close to normal distribution in real estate dataset. 
+
+Uniqueness / Deduplication - whether duplicated records are present in data-set.
+For example: proportion of lead contacts records in CRM dataset. 
+
+Accuracy - whether records in data-set accurately reflect real world facts or knowledge.
+For example: proportion of customer address records that were verified using trusted external data-sources such
+as data from government bodies like Chamber of Commerce or Ministry of Trade. 
+
+#### Summary
+Aforementioned Data Quality Dimensions (DQD*) could be summarized in the following list:
+
+* Accuracy (IS0) & Validity (DMBOK) - Whether data comply syntactic and semantic rules.
+* Completeness (ISO & DMBOK) -Whether expected data is present in full form. 
+* Consistency (ISO) and Integrity (DMBOK) - Whether components of data set are coherent between each other.
+* Credibility (ISO) & Accuracy (DMBOK) - Whether data can be trusted and reflects correctly state of real world.
+* Currentnes (ISO) & Currency (DMBOK) - Whether data is fresh enough and reflect recent state of real world.
+* Timeliness (DMBOK)
+* Reasonableness (DMBOK)
+* Uniqueness (DMBOK)
+
+Although Data Quality definitions above are proposed by reputable bodies, it worth mention that final implementation
+of Data Quality measurements and their importance are highly depends on specific use case.
 
 # References
 Bellow is the list of other sources used to write this post:
 - https://iso25000.com/index.php/en/iso-25000-standards/iso-25012
 - https://arxiv.org/pdf/2102.11527
+- https://medium.com/the-thoughtful-engineer/part-5-iso-25012-in-action-what-data-quality-really-means-5e334b828595
