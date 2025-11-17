@@ -4,7 +4,12 @@
 In the following series of blog posts we will reveal a topic of Data Quality from both theoretical and practical 
 implementation using Spark framework and compare corresponding tools for this job. 
 Although commercial market for Data Quality evaluation is pretty wide and worth looking, the focus of this series is 
-OSS solutions.
+OSS solutions. In particular the series will cover the following technologies:
+* [GreatExpectations](https://greatexpectations.io)
+* [Soda](https://soda.io)
+* [DQX](https://databrickslabs.github.io/dqx/)
+* [deequ](https://github.com/awslabs/deequ)
+* [pandera](https://pandera.readthedocs.io/en/stable/)
 
 This first part of the series gives a short introduction into of data quality topic and cover first framework - 
 Greate Expectations. 
@@ -98,31 +103,45 @@ of Data Quality measurements and their importance are highly depends on specific
 In order to fairly compare and evaluate each Data Quality framework in this series, they will be tested under same conditions.
 We will check quality of [Airline](https://relational.fel.cvut.cz/dataset/Airline) data-set from "CTU Relational Learning Repository" repository.
 This data-set represents flight data in US for 2016 year, consisting of main `On_Time_On_Time_Performance_2016_1` table and several dimensions. 
-The data set is not too complex, represents real world data and slightly messy, which is a good combination to for case study.
-The goal is to measure this data set quality per each dimension with corresponding metrics:
+The data set is not too complex, represents real world data and slightly messy, which is a good combination for the case study.
+The goal is to measure this data set quality per each dimension with corresponding metrics. 
+Surely the list of measured metrics can be extended a lot more, but for a sake of brevity lets keep it short, having 
+~1-3 metric per category:
 
 Accuracy & Validity 
-- Proportion of `TailNum` column values that are valid combinations (see [Aircraft registration](https://en.wikipedia.org/wiki/Aircraft_registration))
-- Proportion of valid `OriginState` and `DestinationState` (see [States Abbreviations](https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/appendix_a.html))
+- All values of `TailNum` column are valid "tail number" combinations (see [Aircraft registration](https://en.wikipedia.org/wiki/Aircraft_registration))
+- All values in columns `OriginState` contains valid state abbreviations (see [States Abbreviations](https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/appendix_a.html))
+- All rows for have `ActualElapsedTime` that is more then `AirTime`. 
 
 Completeness
-- Proportion of `null` values in `On_Time_On_Time_Performance_2016_1` fact table.
+- All values in columns `FlightDate`, `AirlineID`, `TailNum` are not null. 
 
 Consistency & Integrity
-- Proportion of wrong foreign key columns like `AirlineID`, `OriginAirportID` etc.
+- All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table etc.
 
 Credibility / Accuracy
-- Validate `TailNum` in https://aerobasegroup.com 
+- At least 80% of `TailNum` columns values can be found in [Federal Aviation Database](https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download )
 
-Currentnes / Currency
-- Proportion of records older than a year ago.
+`Currentnes / Currency`
+- All rows are not older than 2016.
 
 Reasonableness
-- Average speed calculated based on `AirTime` (in minutes) and `Distance` is withing modern Aircraft average speed.
+- Average speed calculated based on `AirTime` (in minutes) and `Distance` is close to average cruise speed of 885 KpH.
 - 90th percentile of `DepDelay` is under 60 minutes; 
 
 Uniqueness
-- Proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID` and `DestAirportID`.
+- Proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID` and `DestAirportID` is less than 1%.
+
+
+### Great Expectations
+[Great Expectations](https://greatexpectations.io) is a powerful framework that provide capability to test your data
+in multiple storages and platforms, including Spark. 
+
+All expectations: https://greatexpectations.io/expectations/
+
+https://docs.greatexpectations.io/docs/reference/learn/data_quality_use_cases/integrity/
+
+
 
 # References
 Bellow is the list of other sources used to write this post:

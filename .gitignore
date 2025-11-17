@@ -69,4 +69,7 @@ Thumbs.db
 *.pem
 *.key
 *.crt
+*.jar
 .local
+
+src/artifacts
