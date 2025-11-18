@@ -9,6 +9,18 @@ setup:
 	uv venv
 	@echo "[SETUP] Virtual environment created successfully"
 
+clean-faa:
+	@echo "[CLEAN] Removing directory: $(DATA_DIR)"
+	@rm -rf $(DATA_DIR)
+	@echo "[CLEAN] Cleanup complete"
+
+install:
+	@echo "[INSTALL] Locking dependencies..."
+	@uv lock
+	@echo "[INSTALL] Syncing dependencies..."
+	@uv sync
+	@echo "[INSTALL] Installation complete"
+
 download-maria-db-driver:
 	@echo "[DOWNLOAD] Downloading MariaDB driver..."
 	wget -O $(MARIADB_JAR) $(MARIADB_URL)
@@ -28,18 +40,6 @@ download-faa:
 	@echo "[FAA] Extraction complete. Removing zip file..."
 	@rm $(ZIP_FILE)
 	@echo "[FAA] Done! Files extracted to $(DATA_DIR)"
-
-clean-faa:
-	@echo "[CLEAN] Removing directory: $(DATA_DIR)"
-	@rm -rf $(DATA_DIR)
-	@echo "[CLEAN] Cleanup complete"
-
-install:
-	@echo "[INSTALL] Locking dependencies..."
-	@uv lock
-	@echo "[INSTALL] Syncing dependencies..."
-	@uv sync
-	@echo "[INSTALL] Installation complete"
 
 format:
 	@echo "[FORMAT] Formatting code with black..."
