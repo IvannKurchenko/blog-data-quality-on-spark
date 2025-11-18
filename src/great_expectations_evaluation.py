@@ -3,11 +3,12 @@ import logging
 import great_expectations as gx
 from great_expectations import ExpectationSuite
 from great_expectations.core import ExpectationSuiteValidationResult
+from great_expectations.core.batch import Batch
 from great_expectations.expectations import ExpectColumnDistinctValuesToBeInSet, ExpectColumnValuesToMatchRegex, \
     ExpectColumnPairValuesAToBeGreaterThanB, ExpectColumnValuesToNotBeNull, \
     ExpectColumnPairValuesToBeEqual, ExpectColumnMeanToBeBetween, ExpectColumnQuantileValuesToBeBetween, \
     ExpectColumnProportionOfUniqueValuesToBeBetween
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 
 from src.common import SparkSessionManager, AirlineDataset, FaaDataset
@@ -17,99 +18,28 @@ logging.basicConfig(level=logging.INFO)
 
 
 def evaluate(spark: SparkSession):
-    airline_dataset = AirlineDataset(spark)
-    faa_dataset = FaaDataset(spark)
+    test_on_time_on_time_performance_df = prepare_data(spark)
+    batch = prepare_greate_expectations_batch(test_on_time_on_time_performance_df)
+    suite = prepare_test_suite()
+    validation_results: ExpectationSuiteValidationResult = batch.validate(suite)
+    print_validation_result(validation_results)
 
-    airline_id_df = (
-        airline_dataset
-        .l_airline_id_df()
-        .select('Code')
-        .withColumnRenamed('Code', 'AirlineCode')
-    )
 
-    on_time_on_time_performance_df = (
-        airline_dataset
-        .on_time_on_time_performance_2016_1_df()
-    )
-
-    master_df = faa_dataset.master_df()
-    dereg_df = faa_dataset.dereg_df()
-
-    tail_num_column = F.concat(F.lit('N'), F.col('N-NUMBER')).alias('FaaTailNum')
-    faa_tail_numbers = (
-        master_df
-        .select(tail_num_column)
-        .union(dereg_df.select(tail_num_column))
-        .distinct()
-    )
-
-    test_on_time_on_time_performance_df = (
-        on_time_on_time_performance_df
-        .withColumn('FlightSpeed', F.col('Distance') / (F.col('AirTime') / F.lit(60)))
-        .withColumn(
-            'FlightCompoundId',
-            F.concat(
-                F.col('FlightDate'),
-                F.lit('-'),
-                F.col('AirlineId'),
-                F.lit('-'),
-                F.col('TailNum'),
-                F.lit('-'),
-                F.col('OriginAirportID'),
-                F.lit('-'),
-                F.col('DestAirportID')
-            )
-        )
-        .join(airline_id_df, on=on_time_on_time_performance_df.AirlineID == airline_id_df.AirlineCode, how='left')
-        .join(faa_tail_numbers, on=on_time_on_time_performance_df.TailNum == faa_tail_numbers.FaaTailNum, how='left')
-    )
-
-    context = gx.get_context()
-
-    data_source_name = "airline"
-    data_source = context.data_sources.add_or_update_spark(name=data_source_name)
-
-    data_asset_name = "flights"
-    assets = data_source.get_assets_as_dict()
-    if data_asset_name not in assets:
-        logging.info(f"Creating data asset: `{data_asset_name}`")
-        data_source.add_dataframe_asset(name=data_asset_name)
-
-    data_asset = (
-        context.data_sources
-        .get(data_source_name)
-        .get_asset(data_asset_name)
-    )
-
-    batch_definition_name = "airline_batch_definition"
-    data_asset.add_batch_definition_whole_dataframe(
-        batch_definition_name
-    )
-
-    batch_definition = (
-        context
-        .data_sources.get(data_source_name)
-        .get_asset(data_asset_name)
-        .get_batch_definition(batch_definition_name)
-    )
-
-    batch_parameters = {"dataframe": test_on_time_on_time_performance_df}
-
+def prepare_test_suite() -> ExpectationSuite:
     #
     # Accuracy & Validity
     #
-
-    tail_num_expectation = ExpectColumnValuesToMatchRegex(
+    tail_num_syntactic_validity_expectation = ExpectColumnValuesToMatchRegex(
         column="TailNum",
         regex="^N(?:[1-9]\d{0,4}|[1-9]\d{0,3}[A-Z]|[1-9]\d{0,2}[A-Z]{2})$"
     )
 
-    origin_state_expectation = ExpectColumnDistinctValuesToBeInSet(
+    origin_state_semantic_validity_expectation = ExpectColumnDistinctValuesToBeInSet(
         column="OriginState",
         value_set=STATE_CODES
     )
 
-    elapsed_time_greater_then_air_time = ExpectColumnPairValuesAToBeGreaterThanB(
+    elapsed_time_greater_then_air_timey_expectation = ExpectColumnPairValuesAToBeGreaterThanB(
         column_A="ActualElapsedTime",
         column_B="AirTime",
         or_equal=False
@@ -118,16 +48,8 @@ def evaluate(spark: SparkSession):
     #
     # Completeness
     #
-
-    # `FlightDate`, `AirlineID`, `TailNum` are not null.
-    flight_date_not_null_expectation = ExpectColumnValuesToNotBeNull(
-        column="FlightDate",
-    )
-
-    airline_id_not_null_expectation = ExpectColumnValuesToNotBeNull(
-        column="AirlineID"
-    )
-
+    flight_date_not_null_expectation = ExpectColumnValuesToNotBeNull(column="FlightDate")
+    airline_id_not_null_expectation = ExpectColumnValuesToNotBeNull(column="AirlineID")
     tail_num_not_null_expectation = ExpectColumnValuesToNotBeNull(column="TailNum")
 
     #
@@ -145,21 +67,14 @@ def evaluate(spark: SparkSession):
     #
     # Credibility / Accuracy
     #
-    airline_id_expectation = ExpectColumnPairValuesToBeEqual(
+    tail_num_faa_validity_expectation = ExpectColumnPairValuesToBeEqual(
         column_A="TailNum",
         column_B="FaaTailNum"
     )
 
     #
-    # Currentnes / Currency
-    #
-
-    # TODO!
-
-    #
     # Reasonableness
     #
-
     flight_speed_expectation = ExpectColumnMeanToBeBetween(
         column='FlightSpeed',
         min_value=870,
@@ -184,29 +99,108 @@ def evaluate(spark: SparkSession):
     )
 
     suite = ExpectationSuite(name="airline_expectation_suite")
-    suite.add_expectation(tail_num_expectation)
-    suite.add_expectation(origin_state_expectation)
-    suite.add_expectation(elapsed_time_greater_then_air_time)
+    suite.add_expectation(tail_num_syntactic_validity_expectation)
+    suite.add_expectation(origin_state_semantic_validity_expectation)
+    suite.add_expectation(elapsed_time_greater_then_air_timey_expectation)
+
     suite.add_expectation(flight_date_not_null_expectation)
     suite.add_expectation(airline_id_not_null_expectation)
     suite.add_expectation(tail_num_not_null_expectation)
+
     suite.add_expectation(airline_id_expectation)
+
+    suite.add_expectation(tail_num_faa_validity_expectation)
+
     suite.add_expectation(flight_speed_expectation)
     suite.add_expectation(dep_delay_expectation)
     suite.add_expectation(flight_compound_id_expectation)
+    return suite
 
+
+def prepare_data(spark: SparkSession) -> DataFrame:
+    airline_dataset = AirlineDataset(spark)
+    faa_dataset = FaaDataset(spark)
+
+    airline_id_df = (
+        airline_dataset
+        .l_airline_id_df()
+        .select('Code')
+        .withColumnRenamed('Code', 'AirlineCode')
+    )
+
+    on_time_on_time_performance_df = (
+        airline_dataset
+        .on_time_on_time_performance_2016_1_df()
+    )
+
+    faa_tail_numbers_df = faa_dataset.all_tail_numbers_df()
+
+    test_on_time_on_time_performance_df = (
+        on_time_on_time_performance_df
+        .withColumn('FlightSpeed', F.col('Distance') / (F.col('AirTime') / F.lit(60)))
+        .withColumn(
+            'FlightCompoundId',
+            F.concat(
+                F.col('FlightDate'),
+                F.lit('-'),
+                F.col('AirlineId'),
+                F.lit('-'),
+                F.col('TailNum'),
+                F.lit('-'),
+                F.col('OriginAirportID'),
+                F.lit('-'),
+                F.col('DestAirportID')
+            )
+        )
+        .join(airline_id_df, on=on_time_on_time_performance_df.AirlineID == airline_id_df.AirlineCode, how='left')
+        .join(faa_tail_numbers_df, on=on_time_on_time_performance_df.TailNum == faa_tail_numbers_df.FaaTailNum,
+              how='left')
+    )
+    return test_on_time_on_time_performance_df
+
+def prepare_greate_expectations_batch(data_frame: DataFrame) -> Batch:
+    context = gx.get_context()
+
+    data_source_name = "airline"
+    data_source = context.data_sources.add_spark(name=data_source_name)
+
+    data_asset_name = "flights"
+    logging.info(f"Creating data asset: `{data_asset_name}`")
+    data_source.add_dataframe_asset(name=data_asset_name)
+    data_asset = context.data_sources.get(data_source_name).get_asset(data_asset_name)
+
+    batch_definition_name = "airline_batch_definition"
+    data_asset.add_batch_definition_whole_dataframe(batch_definition_name)
+
+    batch_definition = (
+        context
+        .data_sources.get(data_source_name)
+        .get_asset(data_asset_name)
+        .get_batch_definition(batch_definition_name)
+    )
+
+    batch_parameters = {"dataframe": data_frame}
     batch = batch_definition.get_batch(batch_parameters=batch_parameters)
+    return batch
 
-    # Test the Expectation
-    validation_results: ExpectationSuiteValidationResult = batch.validate(suite)
-    print(validation_results)
-    # logging.info(
-    #     f"""
-    #     Validation results:
-    #     Success: {validation_results.success}
-    #     Statistics: {validation_results.statistics}
-    #     """
-    # )
+
+def print_validation_result(result: ExpectationSuiteValidationResult):
+    status = "✓ PASSED" if result.success else "✗ FAILED"
+    print(f"\n{status} - {result.suite_name}")
+
+    if result.statistics:
+        successful = result.statistics.get('successful_expectations', 0)
+        evaluated = result.statistics.get('evaluated_expectations', 0)
+        success_pct = result.statistics.get('success_percent', 0)
+        print(f"Results: {successful}/{evaluated} passed ({success_pct:.1f}%)")
+
+    failed_results = [r for r in result.results if not r.success]
+    if failed_results:
+        print("\nFailed Expectations:")
+        for exp_result in failed_results:
+            exp_type = exp_result.expectation_config.type
+            unexpected_pct = exp_result.result.get('unexpected_percent', 0)
+            print(f"  • {exp_type} ({unexpected_pct:.2f}% unexpected)")
 
 
 def run():

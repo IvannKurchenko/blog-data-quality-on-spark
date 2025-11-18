@@ -137,6 +137,7 @@ Uniqueness
 [Great Expectations](https://greatexpectations.io) is a powerful framework that provide capability to test your data
 in multiple storages and platforms, including Spark. 
 
+
 All expectations: https://greatexpectations.io/expectations/
 
 https://docs.greatexpectations.io/docs/reference/learn/data_quality_use_cases/integrity/

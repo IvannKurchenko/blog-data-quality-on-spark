@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession, DataFrame
-
+from pyspark.sql import functions as F
 
 class SparkSessionManager:
     def __init__(self):
@@ -109,3 +109,17 @@ class FaaDataset:
 
     def dereg_df(self) -> DataFrame:
         return self.spark.read.csv("data_faa/DEREG.txt", header=True, inferSchema=True)
+
+    def all_tail_numbers_df(self) -> DataFrame:
+        master_df = self.master_df()
+        dereg_df = self.dereg_df()
+
+        tail_num_column = F.concat(F.lit('N'), F.col('N-NUMBER')).alias('FaaTailNum')
+        faa_tail_numbers = (
+            master_df
+            .select(tail_num_column)
+            .union(dereg_df.select(tail_num_column))
+            .distinct()
+        )
+
+        return faa_tail_numbers
