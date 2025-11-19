@@ -1,4 +1,4 @@
-# Source
+# Source: https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/appendix_a.html
 STATE_CODES = [
     "AL", "KY", "OH",
     "AK", "LA", "OK",

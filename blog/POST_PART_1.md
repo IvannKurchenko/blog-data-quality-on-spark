@@ -1,4 +1,4 @@
-## Data quality on Spark: Theory
+## Data quality on Spark, Part 1: GreatExpectations
 
 ### Introduction
 In the following series of blog posts we will reveal a topic of Data Quality from both theoretical and practical 
@@ -120,31 +120,169 @@ Consistency & Integrity
 - All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table etc.
 
 Credibility / Accuracy
-- At least 80% of `TailNum` columns values can be found in [Federal Aviation Database](https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download )
+- At least 80% of `TailNum` columns values can be found in [Federal Aviation Agency Database](https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download)
 
-`Currentnes / Currency`
-- All rows are not older than 2016.
+Currentnes / Currency
+- All values in column `FlightDate` are not older than 2016.
 
 Reasonableness
 - Average speed calculated based on `AirTime` (in minutes) and `Distance` is close to average cruise speed of 885 KpH.
 - 90th percentile of `DepDelay` is under 60 minutes; 
 
 Uniqueness
-- Proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID` and `DestAirportID` is less than 1%.
+- Proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID` and `DestAirportID` is less than 10%.
 
 
 ### Great Expectations
 [Great Expectations](https://greatexpectations.io) is a powerful framework that provide capability to test your data
-in multiple storages and platforms, including Spark. 
+in multiple storages and platforms, including Spark. One of the core elements and building blocks is [Expectation](https://docs.greatexpectations.io/docs/core/define_expectations/create_an_expectation)
+that essentially defines validation rule for a data. The framework provide many capabilities (such as [checkpointing](https://docs.greatexpectations.io/docs/reference/api/checkpoint_class/)) 
+which won't be covered here. For the sake of a brevity, the lets keep the focus on the Airline case study and data validation.
 
+First we need to set up basic infrastructure for the framework:
+```python
+import great_expectations as gx
+context = gx.get_context()
 
-All expectations: https://greatexpectations.io/expectations/
+data_source_name = "airline"
+data_source = context.data_sources.add_spark(name=data_source_name)
 
-https://docs.greatexpectations.io/docs/reference/learn/data_quality_use_cases/integrity/
+data_asset_name = "flights"
+data_asset = data_source.add_dataframe_asset(name=data_asset_name)
 
+batch_definition_name = "airline_batch_definition"
+batch_definition = data_asset.add_batch_definition_whole_dataframe(batch_definition_name)
 
+batch_parameters = {"dataframe": data_frame}
+batch = batch_definition.get_batch(batch_parameters=batch_parameters)
+```
+where
+- `data_source` - [Datasource](https://docs.greatexpectations.io/docs/reference/api/datasource/fluent/Datasource_class). Where we're going to get data from.
+- `data_asset` - [DataAsset](https://docs.greatexpectations.io/docs/reference/api/datasource/fluent/DataAsset_class). A records within data source.
+- `batch_definition` - [BatchDefinition](https://docs.greatexpectations.io/docs/reference/api/core/batch_definition/batchdefinition_class/). Batch from asset we're going to test. 
+- `data_frame` - PySpark data frame under the testing.
 
-# References
+After base is ready we can proceed to testing data itself. The plan now is to create a set of expectations, create a [suite](https://docs.greatexpectations.io/docs/0.18/reference/learn/terms/expectation_suite/) and validate it.
+
+#### Accuracy & Validity
+To validate `TailNum` values are syntactically correct, we can leverage [ExpectColumnValuesToMatchRegex](https://greatexpectations.io/expectations/expect_column_values_to_match_regex/) to check it against regular expression: 
+```python
+tail_num_syntactic_validity_expectation = ExpectColumnValuesToMatchRegex(
+    column="TailNum",
+    regex="^N(?:[1-9]\d{0,4}|[1-9]\d{0,3}[A-Z]|[1-9]\d{0,2}[A-Z]{2})$"
+)
+```
+
+State codes in `OriginState` column are two character states abbreviation, that can be validated to against [known list of codes](https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/appendix_a.html).
+[ExpectColumnDistinctValuesToBeInSet](https://greatexpectations.io/expectations/expect_column_distinct_values_to_be_in_set/) expectation can help us with this:
+```python
+origin_state_semantic_validity_expectation = ExpectColumnDistinctValuesToBeInSet(
+    column="OriginState",
+    value_set=STATE_CODES
+)
+```
+
+To validate that `ActualElapsedTime` and `AirTime` are reasonably correct we can use [ExpectColumnPairValuesAToBeGreaterThanB](https://greatexpectations.io/expectations/expect_column_pair_values_a_to_be_greater_than_b/)
+to verify that one total flight time is less than time in air: 
+```python
+elapsed_time_greater_then_air_timey_expectation = ExpectColumnPairValuesAToBeGreaterThanB(
+    column_A="ActualElapsedTime",
+    column_B="AirTime",
+    or_equal=False
+)
+```
+
+#### Completeness
+This one is relatively simple, we just need validate that aforementioned column are not nulls, which GreatExpectations made easy:
+```python
+flight_date_not_null_expectation = ExpectColumnValuesToNotBeNull(column="FlightDate")
+airline_id_not_null_expectation = ExpectColumnValuesToNotBeNull(column="AirlineID")
+tail_num_not_null_expectation = ExpectColumnValuesToNotBeNull(column="TailNum")
+```
+
+#### Consistency & Integrity
+To validate foreign keys are correct between `AirlineID` and `Code` in `L_AIRLINE_ID` in table we can consider couple options:
+- [ExpectColumnValuesToBeInSet](https://greatexpectations.io/expectations/expect_column_values_to_be_in_set/) - collect all `Code` values into collection. That works fine if list of values is small to fit in memory.  
+- [ExpectQueryResultsToMatchComparison](https://greatexpectations.io/expectations/expect_query_results_to_match_comparison/) - use SQL to join and on dimension table. Although this works only for Databricks, there is no support for plain Spark.
+- [ExpectColumnPairValuesToBeEqual](https://greatexpectations.io/expectations/expect_column_pair_values_to_be_equal/) - perform join for target dataset and add dimension table id. 
+
+For the sake of simplicity the last option was used:
+```python
+airline_id_expectation = ExpectColumnPairValuesToBeEqual(
+        column_A="AirlineID", # Main flights table column
+        column_B="AirlineCode" # joined `Code` column from `L_AIRLINE_ID`
+)
+```
+More about integrity verification in GreatExpectation you can find in this [documentation](https://docs.greatexpectations.io/docs/reference/learn/data_quality_use_cases/integrity)
+
+#### Credibility & Accuracy
+To verify `TailNum` column values accuracy we will use registration numbers from [Federal Aviation Agency Database](https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download).
+This database will be loaded into data frame with `FaaTailNum` column, which we can join to main flights data frame.
+Having this two column in place we can use same expectation as in previous example: 
+
+```python
+tail_num_faa_validity_expectation = ExpectColumnPairValuesToBeEqual(
+    column_A="TailNum", # Main flights table column
+    column_B="FaaTailNum"  # joined `FaaTailNum` column from FAA Database
+)
+```
+
+#### Currentnes & Currency
+To verify `FlightDate` is not older than 2016, we can leverage `ExpectColumnMinToBeBetween` with setting expected min date: 
+```python
+flight_date_expectation = ExpectColumnMinToBeBetween(
+    column="FlightDate",
+    min_value="2016-01-01",
+)
+```
+More about freshness verification in GreatExpectation you can find in this [documentation](https://docs.greatexpectations.io/docs/reference/learn/data_quality_use_cases/freshness)
+
+#### Reasonableness
+To verify average speed is within expected boundaries, lets first calculate:  
+```python
+.withColumn('FlightSpeed', F.col('Distance') / (F.col('AirTime') / F.lit(60)))
+```
+
+Having column this in place we can now check assumption that it should be close to 885 KpH (± 15KpH):  
+```python
+flight_speed_expectation = ExpectColumnMeanToBeBetween(
+    column='FlightSpeed',
+    min_value=870,
+    max_value=900
+)
+```
+
+Now, we can proceed to `DepDelay`. GX provides out of the box `ExpectColumnQuantileValuesToBeBetween` expectation to test that its 90th percentile is under 60 minutes:
+```python
+dep_delay_expectation = ExpectColumnQuantileValuesToBeBetween(
+    column="DepDelay",
+    quantile_ranges={
+        "quantiles": [0.9],
+        "value_ranges": [[0, 60]]
+    }
+)
+```
+
+More about distribution verification in GreatExpectation you can find in this [documentation](https://docs.greatexpectations.io/docs/reference/learn/data_quality_use_cases/distribution)
+
+### Uniqueness
+Last but not least, we can test proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID` and `DestAirportID` is less than 1%.
+For this we can use `ExpectCompoundColumnsToBeUnique` that does all the work for us:
+
+```python
+flight_compound_id_expectation = ExpectCompoundColumnsToBeUnique(
+    column_list=['FlightDate', 'AirlineId', 'TailNum', 'OriginAirportID', 'DestAirportID'],
+    mostly=0.9,
+)
+```
+More about uniqueness testing in GreatExpectation you can find in this [documentation](https://docs.greatexpectations.io/docs/reference/learn/data_quality_use_cases/uniqueness) 
+
+### Conclusion
+In this article we covered just a small portion of capabilities that GreatExpectations provides, but you can find more in their docs.
+Complete source code you can find [here](https://github.com/IvannKurchenko/blog-data-quality-on-spark).
+In the next part we will cover [Soda](https://soda.io) framework on the same example.
+
+### References
 Bellow is the list of other sources used to write this post:
 - https://iso25000.com/index.php/en/iso-25000-standards/iso-25012
 - https://arxiv.org/pdf/2102.11527
