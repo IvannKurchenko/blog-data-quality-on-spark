@@ -69,7 +69,8 @@ Thumbs.db
 *.pem
 *.key
 *.crt
+*.jar
 .local
 
-/data
-*.parquet
+src/artifacts
+src/data_faa

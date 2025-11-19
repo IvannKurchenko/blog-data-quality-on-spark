@@ -1,1 +1,0 @@
-## Data quality on Spark
