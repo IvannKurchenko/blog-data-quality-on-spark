@@ -27,22 +27,22 @@ ISO-25012 defines a high-level model for data quality. It defines two main categ
 
 The standard specifies the list of characteristics and corresponding "data quality properties" for each characteristic can be measured by for the "Inherent Data Quality" category:
 
-Accuracy - reflects how well data represents real world facts or measurements.
+- **Accuracy** - reflects how well data represents real world facts or measurements.
 For example: proportion of correct email addresses.
 Data quality properties: "Syntactic Accuracy", "Semantic Accuracy", "Accuracy range";
 
-Completeness - how many of the expected entity properties are present. 
+- **Completeness** - how many of the expected entity properties are present. 
 For example: proportion of empty or null values.
 Data quality properties: "Record Completeness", "File completeness", "Data Value Completeness", "False Completeness Of File", etc.
 
-Consistency - how much data is coherent.
+- **Consistency** - how much data is coherent.
 For example: proportion of denormalized data that is inconsistent across tables.
 Data quality properties:  "Referential Integrity", "Risk Of Inconsistency", "Semantic Consistency", "Format Consistency".
 
-Credibility - how much we can be trusted. For example: proportion of geo-addresses confirmed via external sources like OSM.
+- **Credibility** - how much we can be trusted. For example: proportion of geo-addresses confirmed via external sources like OSM.
 Data quality properties: "Data values Credibility", "Source Credibility";
 
-Currentness - how fresh the data is.
+- **Currentness** - how fresh the data is.
 For example: proportion of records upserted in the past 24 hours.   
 Data quality properties: "Update Frequency", "Timelines of Update";
 
@@ -51,31 +51,31 @@ Data quality properties: "Update Frequency", "Timelines of Update";
 giving valuable recommendations, in particular covering the subject of Data Quality (Chapter 16).
 The book reveals a subject of Data Quality from the perspective of the following dimensions:
 
-Validity - whether values are correct from a domain knowledge perspective.
+- **Validity** - whether values are correct from a domain knowledge perspective.
 For example: proportion of numerical records within the expected range for an age in a socio-demographic data-set.
 
-Completeness - whether the required data is present. 
+- **Completeness** - whether the required data is present. 
 For example: proportion of absent or blank values for required columns in a data set.
 
-Consistency - whether data is encoded the same way all over a place.
+- **Consistency** - whether data is encoded the same way all over a place.
 For example: proportion of records complying same address format between tables in the CRM dataset.
 
-Integrity - whether references across the data sets are consistent.
+- **Integrity** - whether references across the data sets are consistent.
 For example, the proportion of records with broken foreign keys between the department and employee in the data set of the organization structure. 
 
-Timeliness - whether data is updated within the expected time range.
+- **Timeliness** - whether data is updated within the expected time range.
 For example, the data set reflecting sales quarter results should be completely updated within two weeks.   
 
-Currency - whether the data is fresh enough and reflects the current state of the world.
+- **Currency** - whether the data is fresh enough and reflects the current state of the world.
 For example: proportion of records that were inserted not more than 1 hour ago in the data set of IoT devices readings.  
 
-Reasonableness - whether high-level value patterns are close to expectations. 
+- **Reasonableness** - whether high-level value patterns are close to expectations. 
 For example, house prices are close to a normal distribution in the real estate dataset. 
 
-Uniqueness / Deduplication - whether duplicated records are present in the dataset.
+- **Uniqueness / Deduplication** - whether duplicated records are present in the dataset.
 For example: proportion of lead contacts records in the CRM dataset. 
 
-Accuracy - whether records in the data-set accurately reflect real-world facts or knowledge.
+- **Accuracy** - whether records in the data-set accurately reflect real-world facts or knowledge.
 For example: proportion of customer address records that were verified using trusted external data sources such
 as data from government bodies like the Chamber of Commerce or the Ministry of Trade.
 
@@ -101,28 +101,28 @@ The data set is not too complex, represents real-world data, and is slightly mes
 The goal is to measure this data set quality for each dimension with corresponding metrics. 
 Surely the list of measured metrics can be extended a lot more, but for the sake of brevity, let's keep it short, having 1-3 metrics per category:
 
-Accuracy & Validity 
+#### Accuracy & Validity
 - All values of `TailNum` column are valid "tail number" combinations (see [Aircraft registration](https://en.wikipedia.org/wiki/Aircraft_registration))
 - All values in column `OriginState` contain valid state abbreviations (see [States Abbreviations](https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/appendix_a.html))
 - All rows have `ActualElapsedTime` that is more than `AirTime`. 
 
-Completeness
+#### Completeness
 - All values in columns `FlightDate`, `AirlineID`, `TailNum` are not null. 
 
-Consistency & Integrity
+#### Consistency & Integrity
 - All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table, etc.
 
-Credibility / Accuracy
+#### Credibility / Accuracy
 - At least 80% of `TailNum` column values can be found in [Federal Aviation Agency Database](https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download)
 
-Currentness / Currency
+#### Currentness / Currency
 - All values in column `FlightDate` are not older than 2016.
 
-Reasonableness
+#### Reasonableness
 - Average speed calculated based on `AirTime` (in minutes) and `Distance` is close to the average cruise speed of modern aircraft - 885 KpH.
 - 90th percentile of `DepDelay` is under 60 minutes; 
 
-Uniqueness
+#### Uniqueness
 - Proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID`, and `DestAirportID` is less than 10%.
 
 ### Great Expectations
