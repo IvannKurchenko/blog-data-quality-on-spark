@@ -51,4 +51,7 @@ check:
 	@ruff check src/
 	@echo "[CHECK] Check complete"
 
+clean:
+	rm -rf .venv uv.lock __pycache__
+
 .PHONY: setup download-maria-db-driver download-faa clean-faa install format check
