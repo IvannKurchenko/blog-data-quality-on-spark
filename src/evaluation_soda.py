@@ -7,83 +7,64 @@ from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
-from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql import functions as F
+from pyspark.sql import SparkSession
 from soda.sampler.sample_context import SampleContext
-from soda.sampler.sample_ref import SampleRef
 from soda.sampler.sampler import Sampler
 from soda.scan import Scan
 
 from src.common import SparkSessionManager, AirlineDataset, FaaDataset
 
-logging.basicConfig(level=logging.INFO)
-
-def json_serializer(obj):
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    if isinstance(obj, date):
-        return obj.isoformat()
-    if isinstance(obj, Decimal):
-        return float(obj)
-    raise TypeError(f"Type {type(obj)} not serializable")
+SODA_SAMPLES_FOLDER = "soda_samples"
 
 
-# Inspired by the example: https://docs.soda.io/use-case-guides/route-failed-rows#example-script
-# See more in the doc: https://docs.soda.io/run-a-scan/failed-row-samples#configure-a-python-custom-sampler
 class CustomSampler(Sampler):
-    def store_sample(self, sample_context: SampleContext):
+    """
+    Custom sampler that dumps collected samples of failed rows into the local filesystem
+    for later display as part of the data quality evaluation report.
+
+    Inspired by the example: https://docs.soda.io/use-case-guides/route-failed-rows#example-script
+    See more in the doc: https://docs.soda.io/run-a-scan/failed-row-samples#configure-a-python-custom-sampler
+    """
+
+    @staticmethod
+    def json_serializer(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        raise TypeError(f"Type {type(obj)} not serializable")
+
+    def store_sample(self, sample_context: SampleContext):  # type: ignore
+        check_name = sample_context.check_name or sample_context.sample_name
+        exceptions_df = self._create_exceptions_df(sample_context, check_name)
+        check_file_path = self._get_sample_file_path(check_name)
+        os.makedirs(SODA_SAMPLES_FOLDER, exist_ok=True)
+        exceptions_df.to_csv(check_file_path, index=False, encoding="utf-8")
+
+    def _create_exceptions_df(
+        self, sample_context: SampleContext, check_name: str
+    ) -> pd.DataFrame:
         rows = sample_context.sample.get_rows()
-        json_data = json.dumps(rows, default=json_serializer) # Convert failed rows to JSON
-        exceptions_df = pd.read_json(json_data) #create dataframe with failed rows
-        # Define exceptions dataframe
-        exceptions_schema = sample_context.sample.get_schema().get_dict()
-        exception_df_schema = []
-        for n in exceptions_schema:
-            exception_df_schema.append(n["name"])
-        exceptions_df.columns = exception_df_schema
-        check_name = sample_context.check_name
-        exceptions_df.insert(0, 'Failed Check', check_name)
-        check_file_name = sample_context.check_name.lower().strip().replace(" ", "_") + ".csv"
-        check_file_path = "soda_samples/" + check_file_name
-        os.makedirs("soda_samples", exist_ok=True)
-        exceptions_df.to_csv(check_file_path, sep=",", index=False, encoding="utf-8")
+        json_data = json.dumps(rows, default=CustomSampler.json_serializer)
+        exceptions_df = pd.read_json(json_data)
+        exceptions_df.columns = [
+            col["name"] for col in sample_context.sample.get_schema().get_dict()
+        ]
+        exceptions_df.insert(0, "Failed Check", check_name)
+        return exceptions_df
 
-
+    def _get_sample_file_path(self, check_name: str) -> str:
+        check_file_name = f"{check_name.lower().strip().replace(' ', '_')}.csv"
+        return f"{SODA_SAMPLES_FOLDER}/{check_file_name}"
 
 
 def evaluate(spark: SparkSession):
-    shutil.rmtree('soda_samples', ignore_errors=True)
+    shutil.rmtree(SODA_SAMPLES_FOLDER, ignore_errors=True)
     prepare_data(spark)
-    scan = Scan()
-    scan.add_spark_session(spark, data_source_name="all_flights")
-    scan.set_data_source_name("all_flights")
-    scan.add_sodacl_yaml_file(file_path="evaluation_soda_checks.yaml")
-    scan.sampler = CustomSampler()
-    # See - https://docs.soda.io/run-a-scan/failed-row-samples#customize-failed-row-samples-for-datasets-and-columns
-    scan._configuration.samples_limit = 20
-
-    scan.execute()
-    #print(scan.get_scan_results())
-
-    # Inspect the scan logs
-    #######################
-    scan.set_verbose(False) # Set after execution to skip details
-    print(scan.get_logs_text())
-    scan.get_scan_results()
-
-    # Get all CSV files in the folder
-    csv_files = Path('soda_samples').glob('*.csv')
-
-    # Read and concatenate all CSVs
-    df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
-
-    # Print to output
-    print("Samples:")
-    with pd.option_context('display.max_columns', None,
-                           'display.width', None,
-                           'display.max_colwidth', None,
-                           'display.max_rows', None):
-        print(df)
+    scan = run_soda_scan(spark)
+    log_evaluation_report(scan)
 
 
 def prepare_data(spark: SparkSession) -> None:
@@ -102,10 +83,64 @@ def prepare_data(spark: SparkSession) -> None:
     airline_id_df.createOrReplaceTempView("airline_id")
     faa_tail_numbers_df.createOrReplaceTempView("faa_tail_numbers")
 
+
+def run_soda_scan(spark: SparkSession) -> Scan:
+    """Set up and run Soda programmatically for data quality evaluation."""
+    scan = Scan()
+    scan.add_spark_session(spark, data_source_name="all_flights")
+
+    # Necessary to make `all_flights` data source visible checks yaml file
+    scan.set_data_source_name("all_flights")
+
+    scan.add_sodacl_yaml_file(file_path="evaluation_soda_checks.yaml")
+    scan.sampler = CustomSampler()
+
+    # Setting data source wide samples limit.
+    # See for more details:
+    # https://docs.soda.io/run-a-scan/failed-row-samples#customize-failed-row-samples-for-datasets-and-columns
+    scan._configuration.samples_limit = 20
+
+    scan.execute()
+    return scan
+
+
+def log_evaluation_report(scan: Scan):
+    print("Soda evaluation report:")
+    log_scan_report(scan)
+    log_samples_report()
+
+
+def log_samples_report():
+    csv_files = list(Path(SODA_SAMPLES_FOLDER).glob("*.csv"))
+    if csv_files:
+        df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
+        logging.info("Samples:")
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.width", None)
+        pd.set_option("display.max_colwidth", None)
+        pd.set_option("display.max_rows", None)
+        print(df.to_string())
+    else:
+        print("No sample files found.")
+
+
+def log_scan_report(scan: Scan):
+    scan.set_verbose(False)
+    logs_text = scan.get_logs_text()
+    if logs_text:
+        cleaned_logs = "\n".join(
+            line.split(" | ", 1)[1] if " | " in line else line
+            for line in logs_text.split("\n")
+        )
+        print(cleaned_logs)
+    else:
+        print("No logs available.")
+
+
 def run():
-    logging.info('Connecting to Spark session')
+    logging.info("Connecting to Spark session")
     with SparkSessionManager() as spark:
-        logging.info('Start Airline dataset evaluation')
+        logging.info("Start Airline dataset evaluation")
         evaluate(spark)
 
 
