@@ -26,6 +26,7 @@ class CustomSampler(Sampler):
     See more in the doc: https://docs.soda.io/run-a-scan/failed-row-samples#configure-a-python-custom-sampler
     """
 
+    # Custom serialized for Spark types
     @staticmethod
     def json_serializer(obj):
         if isinstance(obj, datetime):
@@ -36,6 +37,7 @@ class CustomSampler(Sampler):
             return float(obj)
         raise TypeError(f"Type {type(obj)} not serializable")
 
+    # Main method to override
     def store_sample(self, sample_context: SampleContext):  # type: ignore
         check_name = sample_context.check_name or sample_context.sample_name
         exceptions_df = self._create_exceptions_df(sample_context, check_name)
@@ -52,6 +54,7 @@ class CustomSampler(Sampler):
         exceptions_df.columns = [
             col["name"] for col in sample_context.sample.get_schema().get_dict()
         ]
+        # Add column with a check for which row has failed.
         exceptions_df.insert(0, "Failed Check", check_name)
         return exceptions_df
 
@@ -98,7 +101,7 @@ def run_soda_scan(spark: SparkSession) -> Scan:
     # Setting data source wide samples limit.
     # See for more details:
     # https://docs.soda.io/run-a-scan/failed-row-samples#customize-failed-row-samples-for-datasets-and-columns
-    scan._configuration.samples_limit = 20
+    scan._configuration.samples_limit = 3
 
     scan.execute()
     return scan
@@ -112,16 +115,9 @@ def log_evaluation_report(scan: Scan):
 
 def log_samples_report():
     csv_files = list(Path(SODA_SAMPLES_FOLDER).glob("*.csv"))
-    if csv_files:
-        df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
-        logging.info("Samples:")
-        pd.set_option("display.max_columns", None)
-        pd.set_option("display.width", None)
-        pd.set_option("display.max_colwidth", None)
-        pd.set_option("display.max_rows", None)
-        print(df.to_string())
-    else:
-        print("No sample files found.")
+    df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
+    print("Samples:")
+    print(df.to_string())
 
 
 def log_scan_report(scan: Scan):

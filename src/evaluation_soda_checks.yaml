@@ -8,7 +8,7 @@ checks for flights:
       valid regex: ^N(?:[1-9]\d{0,4}|[1-9]\d{0,3}[A-Z]|[1-9]\d{0,2}[A-Z]{2})$
       name: Invalid TailNum format
       # See https://docs.soda.io/run-a-scan/failed-row-samples#set-a-sample-limit
-      samples limit: 10
+      samples limit: 2
 
   # See: https://docs.soda.io/sodacl-reference/validity-metrics#specify-valid-or-invalid-values
   - invalid_count(OriginState) = 0:
