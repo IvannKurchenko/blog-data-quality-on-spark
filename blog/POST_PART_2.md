@@ -1,47 +1,36 @@
-## Data quality on Spark, Part 2: Soda
+## Data Quality on Spark, Part 2: Soda
 
 ### Introduction
-In the following series of blog posts, we will reveal a topic of Data Quality from both theoretical and practical implementation using the Spark framework and compare corresponding tools for this job.
-Although the commercial market for Data Quality evaluation is pretty wide and worth looking at, the focus of this series is OSS solutions.
-In the [previous](https://medium.com/gitconnected/data-quality-on-spark-part-1-greatexpectations-fd4ffa126ca0) article we outlined definition of Data Quality 
-and demonstrated implementation of these principles on example of [Airline](https://relational.fel.cvut.cz/dataset/Airline) data-set using [GreatExpectations](https://greatexpectations.io) framework.
-
-In this part we will continue exploring same data-set and applying same Data Quality measurements using [Soda Core](https://github.com/sodadata/soda-core) framework.
+In this series of blog posts, we explore the topic of Data Quality from both a theoretical perspective and a practical implementation standpoint using the Spark framework. We also compare several tools designed to support Data Quality assessments.
+Although the commercial market for Data Quality solutions is broad and full of capable products, the focus of this series is on open-source tools.
+In the [previous article](https://medium.com/gitconnected/data-quality-on-spark-part-1-greatexpectations-fd4ffa126ca0), we defined the core principles of Data Quality and demonstrated how to apply them to the [Airline](https://relational.fel.cvut.cz/dataset/Airline) dataset using the [Great Expectations](https://greatexpectations.io) framework.
+In this part, we continue exploring the same dataset and apply the same Data Quality checks using the [Soda Core](https://github.com/sodadata/soda-core) framework.
 
 ### Soda
-[Soda](https://github.com/sodadata/soda-core) is another powerful tool focusing on making Data Quality assurance easy for a wide variety of storages and platforms.
-Among supported technologies Spark present as well, which we describe more in details later. 
-Important note before we begin - [Soda](https://github.com/sodadata/soda-core) is a whole Data Quality platform, including
-cloud solution, number of cloud integrations and [Soda Library](https://docs.soda.io/quick-start-sip/install) with a lot of advanced capabilities.
-Please, don't confuse `Soda Library` with `Soda Core`. The former one is OSS framework that can't connect to Soda Cloud.
-
-Soda define all checks in YAML instead of defining them programmatically using [Soda Checks Language](https://docs.soda.io/soda-cl-overview/quick-start-sodacl#sodacl-in-brief).
-Same can be said about [configuring data sources connections](https://github.com/sodadata/soda-core/blob/main/docs/configuration.md), except Spark.
-To use Apache Spark `DataFrames` we will need to crete them in Python first. But if you are using cloud solution for Apache Spark, it is strongly encouraged to check if more specific [Data Source](https://docs.soda.io/data-source-reference) configuration is present.
-
-In the following sections we will install and setup Soda, write quality checks for previous dimensions and prepare evaluation report.
-For sake of brevity code examples are shortened. Please, find complete code base [here](https://github.com/IvannKurchenko/blog-data-quality-on-spark)
+[Soda](https://github.com/sodadata/soda-core) is another powerful tool aimed at making Data Quality assurance straightforward across a wide range of storage systems and data platforms. Spark is among the supported technologies, and we will describe its integration in more detail later.
+Before we begin, an important clarification: **Soda is a full Data Quality platform**, which includes a cloud offering, numerous integrations, and the [Soda Library](https://docs.soda.io/quick-start-sip/install) that provides advanced capabilities.  
+However, do not confuse **Soda Library** with **Soda Core**. The former is an open-source framework that **cannot** connect to Soda Cloud.
+Soda defines all checks in YAML using the [Soda Checks Language](https://docs.soda.io/soda-cl-overview/quick-start-sodacl#sodacl-in-brief), rather than through programmatic definitions. The same approach applies to [data source configuration](https://github.com/sodadata/soda-core/blob/main/docs/configuration.md), with the notable exception of Spark.
+To use Apache Spark `DataFrame`s, we must first create them in Python and then pass them to Soda. If you are working with a cloud-hosted Spark platform, it is highly recommended to check whether a more specific [data source configuration](https://docs.soda.io/data-source-reference) is available.
+In the following sections, we will install and configure Soda, write quality checks using the same dimensions as in the previous article, and prepare an evaluation report.  
+For brevity, the code examples are shortened. You can find the full codebase [here](https://github.com/IvannKurchenko/blog-data-quality-on-spark).
 
 ### Setup
-First, we need to install the following packages via a package manager of your choice: 
-- [soda-core-spark](https://pypi.org/project/soda-core-spark/);
-- [soda-core-spark-df](https://pypi.org/project/soda-core-spark-df/)
+First, we need to install the following packages using your preferred package manager:
+- [`soda-core-spark`](https://pypi.org/project/soda-core-spark/)
+- [`soda-core-spark-df`](https://pypi.org/project/soda-core-spark-df/)
 
-NOTE: At the moment of writing of this part there were some versions compatibility pitfalls:  
-- Soda does not support spark 4.0 as of today. See links for more details: [1](https://github.com/sodadata/soda-core/blob/main/soda/spark_df/setup.py#L11), [2](https://github.com/sodadata/soda-core/issues/2217)
-- Soda Core does not support Python 3.12 as of today. See GitHub issue for more details: [1](https://github.com/sodadata/soda-core/issues/2184)
+**Note:** At the time of writing, the following compatibility issues apply:
+- Soda does **not** support Spark 4.0. See: [1](https://github.com/sodadata/soda-core/blob/main/soda/spark_df/setup.py#L11), [2](https://github.com/sodadata/soda-core/issues/2217)
+- Soda Core does **not** support Python 3.12. See: [1](https://github.com/sodadata/soda-core/issues/2184)
 
-
-### Data frames setup
-After we have Soda in place, we can run it. Although Soda provides nice CLI, in case of Spark we need to launch it programmatically (see [doc](https://docs.soda.io/data-source-reference/connect-spark#connect-to-spark-dataframes)). 
-First things first, we need to read and prepare DataFrames. For this example we have three of them: `flights_df`, `airline_id_df`, `faa_tail_numbers_df`.
-After, to make them visible for Soda, views needs to be created:
+### DataFrames Setup
+Although Soda provides a CLI, Spark requires running Soda programmatically (see the [docs](https://docs.soda.io/data-source-reference/connect-spark#connect-to-spark-dataframes)). First, we read and prepare our three DataFrames: `flights_df`, `airline_id_df`, and `faa_tail_numbers_df`. To make them visible to Soda, we register them as temporary views:
 ```python
-flights_df.createOrReplaceTempView("flights") # Main data frame to validate. Represents `On_Time_On_Time_Performance_2016_1` table from original dataset.
-airline_id_df.createOrReplaceTempView("airline_id") # Airlines dimensional table. Represents `L_AIRLINE_ID` table from original dataset.
-faa_tail_numbers_df.createOrReplaceTempView("faa_tail_numbers") # FAA databases with officially registered aircraft numbers.  
+flights_df.createOrReplaceTempView("flights")  # Main DataFrame to validate; corresponds to `On_Time_On_Time_Performance_2016_1`.
+airline_id_df.createOrReplaceTempView("airline_id")  # Airlines dimension table; corresponds to `L_AIRLINE_ID`.
+faa_tail_numbers_df.createOrReplaceTempView("faa_tail_numbers")  # FAA registry of officially registered aircraft numbers.
 ```
-
 
 ### Data quality checks
 [Soda Checks Language](https://docs.soda.io/soda-cl-overview/quick-start-sodacl#sodacl-in-brief) is the YAML based language to define checks in declarative manner.
@@ -82,7 +71,7 @@ To implement this verification, we use [validity checks](https://docs.soda.io/so
 Verification: 
 > All values in column `OriginState` contain valid state abbreviations (see [States Abbreviations](https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/appendix_a.html))
 
-This verification can be implemented similar way, by specifying enumeration of valid values explicitly:
+This verification can be implemented in a similar way, by explicitly enumerating the valid values:
 ```yaml
   - invalid_count(OriginState) = 0:
       valid values: [ "AL", "KY", "OH", "AK", "LA", "OK", "AZ", "ME", "OR", "AR", "MD", "PA", "AS", "MA", "PR", "CA", "MI", "RI", "CO", "MN", "SC", "CT", "MS", "SD", "DE", "MO", "TN", "DC", "MT", "TX", "FL", "NE", "TT", "GA", "NV", "UT", "GU", "NH", "VT", "HI", "NJ", "VA", "ID", "NM", "VI", "IL", "NY", "WA", "IN", "NC", "WV", "IA", "ND", "WI", "KS", "MP", "WY" ]
@@ -92,7 +81,8 @@ This verification can be implemented similar way, by specifying enumeration of v
 Verification: 
 > All rows have `ActualElapsedTime` that is more than `AirTime`.
 
-This is a bit of tricky case, because Soda does not have a check that exactly meets this requirement. One of the option, implement check saying no rows found that matches opposite condition.
+This is a slightly tricky case because Soda does not provide a built-in check that directly matches this requirement.
+One option is to implement a check that asserts no rows exist that match the opposite condition.
 This is pretty easy to do by leveraging [filtering feature](https://docs.soda.io/sodacl-reference/filters#configure-in-check-filters):
 ```yaml
   - row_count = 0:
@@ -104,7 +94,7 @@ This is pretty easy to do by leveraging [filtering feature](https://docs.soda.io
 Verification:
 > All values in columns `FlightDate`, `AirlineID`, `TailNum` are not null.
 
-Soda make null checks ease with [Missing metrics](https://docs.soda.io/sodacl-reference/missing-metrics). Moreover, by "missing" Soda means much wider spectrum of cases then just a `null`, such as `NaN` or empty strings. 
+Soda make null checks easy with [Missing metrics](https://docs.soda.io/sodacl-reference/missing-metrics). Moreover, by "missing" Soda means much wider spectrum of cases then just a `null`, such as `NaN` or empty strings. 
 To make it more interesting, lets showcase also severity levels on this example. See [Configure multiple alerts](https://docs.soda.io/sodacl-reference/optional-config#configure-multiple-alerts) on this topic.
 ```yaml
   - missing_count(FlightDate) = 0: # No rows should be with missing `FlightDate` column.
@@ -132,12 +122,10 @@ Soda provides [Reference checks](https://docs.soda.io/sodacl-reference/reference
 Verification:
 > At least 80% of `TailNum` column values can be found in [Federal Aviation Agency Database](https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download)
 
-Although, this sounds like another case for reference check, requirement about matching percentage blocks its usage. Hence, something more custom is needed.
-Luckily, Soda provides easy to use mechanism for [user defined checks](https://docs.soda.io/sodacl-reference/user-defined) via using custom SQL.
-Idea of the following check, find number of rows (flights) where aircraft `TailNum` has a value that is absent in [FAA Database](https://www.faa.gov):
-If percentage is matches is less than 80 then this is a fail and 95 is warning.
-To make troubleshooting of such issues easier we can customise collecting of invalid rows with SQL as well. See [Customize a failed row samples query](https://docs.soda.io/run-a-scan/failed-row-samples#customize-a-failed-row-samples-query) for more details.
-Implementation looks the following:
+Although this sounds like another case for a reference check, the requirement on the matching percentage prevents us from using it directly. Hence, something more custom is needed. Luckily, Soda provides an easy-to-use mechanism for [user-defined checks](https://docs.soda.io/sodacl-reference/user-defined) via custom SQL.
+The idea of the following check is to find the number of rows (flights) where the aircraft `TailNum` has a value that is absent in the [FAA database](https://www.faa.gov). If the percentage of matches is less than 80%, the check fails; if it is less than 95%, it raises a warning.
+To make troubleshooting easier, we can also customize the collection of invalid rows using SQL. See [Customize a failed row samples query](https://docs.soda.io/run-a-scan/failed-row-samples#customize-a-failed-row-samples-query) for more details.
+Implementation looks as follows:
 ```yaml
   - tail_num_faa_registered_percent:
       name: TailNum values should be registered FAA number.
@@ -158,9 +146,8 @@ Implementation looks the following:
 Verification:
 > All values in column `FlightDate` are not older than 2016.
 
-Soda provides dedicate class of [freshness checks](https://docs.soda.io/sodacl-reference/freshness) that can also evaluate 
-date and time values relative to a date of execution. 
-We can express this verification in similar way to demonstrate its usage:
+Soda provides a dedicated class of [freshness checks](https://docs.soda.io/sodacl-reference/freshness) that can evaluate date and time values relative to the execution date.
+We can express this verification in a similar way to demonstrate its usage:
 ```yaml
   - freshness(FlightDate) < 11y:
       name: Flights should not be older then 11 years.
@@ -170,15 +157,13 @@ We can express this verification in similar way to demonstrate its usage:
 Verification:
 > Average speed calculated based on `AirTime` (in minutes) and `Distance` is close to the average cruise speed of modern aircraft - 885 KpH.
 
-Although Soda supports statistics checks, we need to precalculate data for average. This job is still can be easily done with 
-[user defined checks](https://docs.soda.io/sodacl-reference/user-defined):
+Although Soda supports statistics checks, we need to precalculate data for average. This job is still can be easily done with [user defined checks](https://docs.soda.io/sodacl-reference/user-defined):
 ```yaml
   - avg_speed between 800 and 900: # checking `avg_speed` values is within expected boundaries
       name: Average speed should be close to 885 KpH
       avg_speed expression: AVG(Distance / (AirTime / 60)) # expression to calculate average speed in Kilometers per Hour
       failed rows query: SELECT * FROM flights WHERE  (Distance / (AirTime / 60)) < 800 # Collect invalid wrong samples
 ```
-
 
 Verification:
 > 90th percentile of `DepDelay` is under 60 minutes; 
@@ -205,6 +190,7 @@ This was last piece. Having SodaCL checks in place we can now invoke them.
 
 ### Invoke
 The following snippet demonstrates how easy it is to set up and run Soda locally:
+
 ```python
 from soda.scan import Scan
 
@@ -231,11 +217,10 @@ scan.execute()
 ```
 
 `CustomSampler` implementation will be shown later.
-
 More about invoking Soda library you can fine [here](https://docs.soda.io/quick-start-sip/programmatic) and [here](https://docs.soda.io/data-source-reference/connect-spark)
 
 ### Sampling
-As it was shown bellow, Soda can collect rows samples that don't meet check requirements. Keep in mind, not all the checks able to do this.
+As it was shown above, Soda can collect rows samples that don't meet check requirements. Keep in mind, not all the checks able to do this.
 In Soda Library collected samples are submitted to Soda Cloud. However, in Soda core handling samples requires additional implementation. 
 More details you can find in [Configure a Python custom sampler](https://docs.soda.io/run-a-scan/failed-row-samples#configure-a-python-custom-sampler) documentation.
 We are going to extend `soda.sampler.sampler.Sampler` and save all samples into CSV files, later to show at once. 
@@ -312,7 +297,7 @@ print("Samples:")
 print(df.to_string())
 ```
 
-And the end we can get nice report:
+And at the end we can get this nice report:
 
 ```text
 Soda evaluation report:
