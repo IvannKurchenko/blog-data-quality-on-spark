@@ -4,10 +4,12 @@ import great_expectations as gx
 from great_expectations import ExpectationSuite
 from great_expectations.core import ExpectationSuiteValidationResult
 from great_expectations.core.batch import Batch
-from great_expectations.expectations import ExpectColumnDistinctValuesToBeInSet, ExpectColumnValuesToMatchRegex, \
-    ExpectColumnPairValuesAToBeGreaterThanB, ExpectColumnValuesToNotBeNull, \
-    ExpectColumnPairValuesToBeEqual, ExpectColumnMeanToBeBetween, ExpectColumnQuantileValuesToBeBetween, \
-    ExpectColumnProportionOfUniqueValuesToBeBetween, ExpectColumnMinToBeBetween, ExpectCompoundColumnsToBeUnique
+from great_expectations.expectations import (
+    ExpectColumnDistinctValuesToBeInSet, ExpectColumnValuesToMatchRegex,
+    ExpectColumnPairValuesAToBeGreaterThanB, ExpectColumnValuesToNotBeNull,
+    ExpectColumnPairValuesToBeEqual, ExpectColumnMeanToBeBetween, ExpectColumnQuantileValuesToBeBetween,
+    ExpectColumnMinToBeBetween, ExpectCompoundColumnsToBeUnique
+)
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 
@@ -129,9 +131,11 @@ def prepare_data(spark: SparkSession) -> DataFrame:
         on_time_on_time_performance_df
         .withColumn('FlightSpeed', F.col('Distance') / (F.col('AirTime') / F.lit(60)))
         .join(airline_id_df, on=on_time_on_time_performance_df.AirlineID == airline_id_df.AirlineCode, how='left')
-        .join(faa_tail_numbers_df, on=on_time_on_time_performance_df.TailNum == faa_tail_numbers_df.FaaTailNum, how='left')
+        .join(faa_tail_numbers_df, on=on_time_on_time_performance_df.TailNum == faa_tail_numbers_df.FaaTailNum,
+              how='left')
     )
     return test_on_time_on_time_performance_df
+
 
 def prepare_greate_expectations_batch(data_frame: DataFrame) -> Batch:
     """

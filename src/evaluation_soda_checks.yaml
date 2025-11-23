@@ -1,0 +1,95 @@
+checks for flights:
+  #
+  # Accuracy & Validity
+  #
+
+  # See: https://docs.soda.io/sodacl-reference/validity-metrics#specify-valid-or-invalid-values
+  - invalid_count(TailNum) = 0:
+      valid regex: ^N(?:[1-9]\d{0,4}|[1-9]\d{0,3}[A-Z]|[1-9]\d{0,2}[A-Z]{2})$
+      name: Invalid TailNum format
+      # See https://docs.soda.io/run-a-scan/failed-row-samples#set-a-sample-limit
+      samples limit: 2
+
+  # See: https://docs.soda.io/sodacl-reference/validity-metrics#specify-valid-or-invalid-values
+  - invalid_count(OriginState) = 0:
+      valid values: [ "AL", "KY", "OH", "AK", "LA", "OK", "AZ", "ME", "OR", "AR", "MD", "PA", "AS", "MA", "PR", "CA", "MI", "RI", "CO", "MN", "SC", "CT", "MS", "SD", "DE", "MO", "TN", "DC", "MT", "TX", "FL", "NE", "TT", "GA", "NV", "UT", "GU", "NH", "VT", "HI", "NJ", "VA", "ID", "NM", "VI", "IL", "NY", "WA", "IN", "NC", "WV", "IA", "ND", "WI", "KS", "MP", "WY" ]
+      name: Invalid OriginState value
+
+  # See more for row_count: https://docs.soda.io/sodacl-reference/numeric-metrics#define-checks-with-numeric-metrics
+  - row_count = 0:
+      name: ActualElapsedTime that is more than AirTime
+      # See more about filtering: https://docs.soda.io/sodacl-reference/filters#configure-in-check-filters
+      filter: AirTime > ActualElapsedTime
+
+  #
+  # Completeness
+  #
+
+  # See: https://docs.soda.io/sodacl-reference/missing-metrics
+  - missing_count(FlightDate) = 0:
+      name: FlightDate is null
+  - missing_count(AirlineID) = 0:
+      name: AirlineID is null
+  - missing_percent(TailNum):
+      name: TailNum is null
+      # See - https://docs.soda.io/sodacl-reference/optional-config#configure-multiple-alerts
+      warn: when > 0.5%
+      fail: when > 5%
+
+  #
+  # Consistency & Integrity
+  #
+
+  # See: https://docs.soda.io/sodacl-reference/reference
+  - values in (AirlineID) must exist in airline_id (Code):
+      name: AirlineID must exist in airline dimensional table.
+
+  #
+  # Credibility / Accuracy
+  #
+
+  # See for more details: https://docs.soda.io/sodacl-reference/user-defined
+  - tail_num_faa_registered_percent:
+      name: TailNum values should be registered FAA number.
+      fail: when < 80
+      warn: when < 95
+      tail_num_faa_registered_percent query: |
+        SELECT (COUNT(FaaTailNum) / COUNT(*)) * 100 as TailNumFaaRegisteredPercentage
+        FROM flights
+        LEFT JOIN faa_tail_numbers ON TailNum == FaaTailNum
+      # See https://docs.soda.io/run-a-scan/failed-row-samples#customize-a-failed-row-samples-query
+      failed rows query: |
+          SELECT *
+          FROM flights
+          LEFT ANTI JOIN faa_tail_numbers ON TailNum == FaaTailNum
+          LIMIT 20
+
+  #
+  # Currentness / Currency
+  #
+
+  # See: https://docs.soda.io/sodacl-reference/freshness
+  - freshness(FlightDate) < 11y:
+      name: Flights should not be older then 11 years.
+
+  #
+  # Reasonableness
+  #
+  - avg_speed between 800 and 900:
+      name: Average speed should be close to 885 KpH
+      avg_speed expression: AVG(Distance / (AirTime / 60))
+      failed rows query: SELECT * FROM flights WHERE  (Distance / (AirTime / 60)) < 800
+
+  # See https://docs.soda.io/sodacl-reference/numeric-metrics#list-of-numeric-metrics
+  - departure_delay_90th_percentile < 60:
+      name: 90th percentile of `DepDelay` should be under 60 minutes
+      departure_delay_90th_percentile expression: PERCENTILE_APPROX(DepDelay, 0.90)
+
+  #
+  # Uniqueness
+  #
+
+  # See: https://docs.soda.io/soda-cl-overview/quick-start-sodacl#duplicate-check
+  - duplicate_percent(FlightDate, AirlineId, TailNum, OriginAirportID, DestAirportID) < 10%:
+      name: Flight duplicates are less than 10%
+
