@@ -109,7 +109,7 @@ Checks for severity later will be visible in the final report.
 
 #### Consistency & Integrity
 Verification:
->- All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table, etc.
+> All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table, etc.
 
 Soda provides [Reference checks](https://docs.soda.io/sodacl-reference/reference) exactly for this type of case.
 ```yaml
