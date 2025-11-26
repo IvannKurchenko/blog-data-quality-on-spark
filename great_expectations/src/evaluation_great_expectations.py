@@ -13,8 +13,8 @@ from great_expectations.expectations import (
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 
-from src.common import SparkSessionManager, AirlineDataset, FaaDataset
-from src.constants import STATE_CODES
+from common import SparkSessionManager, AirlineDataset, FaaDataset
+from constants import STATE_CODES
 
 logging.basicConfig(level=logging.INFO)
 
