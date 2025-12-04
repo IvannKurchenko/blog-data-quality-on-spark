@@ -1,15 +1,15 @@
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 [project]
 name = "blog-data-quality-common"
 version = "0.1.0"
 dependencies = [
     "pandas==2.3.3",
-    "pyspark==3.5.4",
-    "deltalake==1.2.1"
+    "databricks-connect==16.4.0",
+    "databricks-labs-dqx==0.10.0"
 ]
 
 [project.optional-dependencies]

@@ -1,6 +1,9 @@
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 
+import pandas as pd
+
+
 class SparkSessionManager:
     def __init__(self):
         self.spark = None
@@ -105,19 +108,20 @@ class FaaDataset:
         self.spark = spark
 
     def master_df(self) -> DataFrame:
-        return self.spark.read.csv("data_faa/MASTER.txt", header=True, inferSchema=True)
+        pandas_df = pd.read_csv("data_faa/MASTER.txt", header=0, on_bad_lines="skip")
+        return self.spark.createDataFrame(pandas_df)
 
     def dereg_df(self) -> DataFrame:
-        return self.spark.read.csv("data_faa/DEREG.txt", header=True, inferSchema=True)
+        pandas_df = pd.read_csv("data_faa/DEREG.txt", header=0, on_bad_lines="skip")
+        return self.spark.createDataFrame(pandas_df)
 
     def all_tail_numbers_df(self) -> DataFrame:
         master_df = self.master_df()
         dereg_df = self.dereg_df()
 
-        tail_num_column = F.concat(F.lit('N'), F.col('N-NUMBER')).alias('FaaTailNum')
+        tail_num_column = F.concat(F.lit("N"), F.col("N-NUMBER")).alias("FaaTailNum")
         faa_tail_numbers = (
-            master_df
-            .select(tail_num_column)
+            master_df.select(tail_num_column)
             .union(dereg_df.select(tail_num_column))
             .distinct()
         )

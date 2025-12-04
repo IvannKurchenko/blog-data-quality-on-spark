@@ -1,4 +1,4 @@
-DATA_DIR = data_faa
+DATA_DIR = src/data_faa
 ZIP_FILE = $(DATA_DIR)/ReleasableAircraft.zip
 FAA_URL = https://registry.faa.gov/database/ReleasableAircraft.zip
 MARIADB_JAR = mariadb-java-client-3.5.6.jar
@@ -20,11 +20,6 @@ install:
 	@echo "[INSTALL] Syncing dependencies..."
 	@uv sync
 	@echo "[INSTALL] Installation complete"
-
-download-maria-db-driver:
-	@echo "[DOWNLOAD] Downloading MariaDB driver..."
-	wget -O $(MARIADB_JAR) $(MARIADB_URL)
-	@echo "[DOWNLOAD] MariaDB driver downloaded successfully"
 
 download-faa:
 	@echo "[FAA] Creating data directory: $(DATA_DIR)"
