@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+requires-python = ">=3.12"
+
+[project]
+name = "blog-data-quality-common"
+version = "0.1.0"
+dependencies = [
+    "pandas==2.3.3",
+    "databricks-connect==16.4.0",
+    "databricks-labs-dqx==0.10.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.14.4",
+    "black==25.11.0",
+]

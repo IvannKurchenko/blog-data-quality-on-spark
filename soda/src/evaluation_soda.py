@@ -12,7 +12,7 @@ from soda.sampler.sample_context import SampleContext
 from soda.sampler.sampler import Sampler
 from soda.scan import Scan
 
-from src.common import SparkSessionManager, AirlineDataset, FaaDataset
+from common import SparkSessionManager, AirlineDataset, FaaDataset
 
 SODA_SAMPLES_FOLDER = "soda_samples"
 

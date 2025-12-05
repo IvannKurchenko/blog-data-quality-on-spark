@@ -1,0 +1,39 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv (Python package manager)
+.uv/
+uv.lock
+uv-cache/
+.uv-cache/
+
+# ---- Apache Spark ----
+# Local Spark checkpoints & logs
+spark-warehouse/
+metastore_db/
+derby.log
+# PySpark temp files
+*.crc
+# Spark event logs
+spark-events/
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+
+# ---- Miscellaneous ----
+*.sqlite
+*.db
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.jar
+.local
+
+src/artifacts
+src/data_faa
+src/soda_samples/
