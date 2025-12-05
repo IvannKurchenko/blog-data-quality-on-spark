@@ -22,8 +22,10 @@ def evaluate():
     print("Connect to compute")
     spark = DatabricksSession.builder.getOrCreate()
 
-    prepare_data(spark)
+    #prepare_data(spark)
     input_df = read_flights(spark)
+    print(f"Flights size: {input_df.count()}")
+
     all_checks = create_all_checks()
 
     observer = DQMetricsObserver(name="dq_metrics")
@@ -38,7 +40,7 @@ def evaluate():
 
 
 def create_check_pass_percentage_thresholds(spark: SparkSession) -> DataFrame:
-    return spark.createDataFrame(
+    data_frame = spark.createDataFrame(
         [
             # The proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID`, and `DestAirportID` is less than 10%.
             ("Flight duplicates", 10),
@@ -52,6 +54,7 @@ def create_check_pass_percentage_thresholds(spark: SparkSession) -> DataFrame:
             StructField("pass_threshold_percentage", IntegerType(), True)
         ])
     )
+    return data_frame
 
 
 def create_all_checks() -> List[DQRule]:
@@ -259,7 +262,7 @@ def create_accuracy_checks() -> List[DQRowRule]:
 def prepare_data(spark: SparkSession):
     """
     Prepare data for DQ checks by storing it to Unity catalog, so to make further work for DQX easier.
-    For instance, saving local FAA csv, so remote Spark session (working via Databricks connect) could access it.
+    For instance, saving local FAA csv, so a remote Spark session (working via Databricks connected) could access it.
 
     Using `ignore` mode to store it just once for case study purposes.
     """
@@ -267,12 +270,11 @@ def prepare_data(spark: SparkSession):
     faa_dataset = FaaDataset(spark)
 
     flights_df = airline_dataset.on_time_on_time_performance_2016_1_df()
-    flights_df.write.mode("ignore").saveAsTable("flights")
-
     airline_id_df = airline_dataset.l_airline_id_df()
-    airline_id_df.write.mode("ignore").saveAsTable("airline_id")
-
     faa_tail_numbers_df = faa_dataset.all_tail_numbers_df()
+
+    airline_id_df.write.mode("ignore").saveAsTable("airline_id")
+    flights_df.write.mode("ignore").saveAsTable("flights")
     faa_tail_numbers_df.write.mode("ignore").saveAsTable("faa_tail_numbers")
 
 
@@ -296,13 +298,15 @@ def save_results(dq_engine: DQEngine, valid_and_invalid_df):
     dq_engine.save_results_in_table(
         output_df=output_df,
         quarantine_df=quarantine_df,
-        output_config=OutputConfig("dqx_output", mode="overwrite"),
-        quarantine_config=OutputConfig("dqx_quarantine", mode="overwrite")
+        output_config=OutputConfig("default.default.dqx_output", mode="overwrite"),
+        quarantine_config=OutputConfig("default.default.dqx_quarantine", mode="overwrite")
     )
+    print("Results saved to Unity catalog")
 
 
 def print_report(observation, spark: SparkSession, valid_and_invalid_df: DataFrame):
     # See: https://databrickslabs.github.io/dqx/docs/guide/summary_metrics/
+    valid_and_invalid_df.count()  # Force observations computation.
     metrics = observation.get
     input_row_count = metrics['input_row_count']
     valid_row_count = metrics['valid_row_count']
@@ -314,11 +318,14 @@ def print_report(observation, spark: SparkSession, valid_and_invalid_df: DataFra
     print(f"Error row count: {error_row_count}, percentage: {error_row_count / input_row_count * 100:.2f}%")
     print(f"Warning row count: {warning_row_count}, percentage: {warning_row_count / input_row_count * 100:.2f}%")
 
+    check_pass_percentage_thresholds_df = create_check_pass_percentage_thresholds(spark)
+
     errors_df = (
         valid_and_invalid_df
         .select(F.explode(F.col("_errors")).alias("error"))
         .select(F.expr("error.*"))
         .withColumn("criticality", F.lit("error"))
+        .select("name", "criticality")
     )
     errors_df.write.mode("overwrite").saveAsTable("errors")
 
@@ -327,18 +334,13 @@ def print_report(observation, spark: SparkSession, valid_and_invalid_df: DataFra
         .select(F.explode(F.col("_warnings")).alias("warning"))
         .select(F.expr("warning.*"))
         .withColumn("criticality", F.lit("warning"))
+        .select("name", "criticality")
     )
     warnings_df.write.mode("overwrite").saveAsTable("warnings")
 
-    check_pass_percentage_thresholds_df = create_check_pass_percentage_thresholds(spark)
+    data_quality_checks = spark.table("errors").unionAll(spark.table("warnings"))
 
-    data_quality_checks = (
-        spark.table("errors").select("name", "criticality")
-        .unionAll(spark.table("warnings").select("name", "criticality"))
-    )
-
-    data_quality_checks.show()
-    (
+    data_quality_checks_results_df = (
         data_quality_checks
         .groupBy("name", "criticality")
         .agg(F.count("*").alias("count"))
@@ -346,8 +348,11 @@ def print_report(observation, spark: SparkSession, valid_and_invalid_df: DataFra
         .join(check_pass_percentage_thresholds_df, on="name", how="left")
         .withColumn("pass_threshold_percentage", F.coalesce(F.col("pass_threshold_percentage"), F.lit(100)))
         .withColumn("passed", F.col("percentage") >= F.col("pass_threshold_percentage"))
-        .show()
     )
+    print("Dataset wise quality checks:")
+    data_quality_checks_results_df.show()
+    failed_checks = data_quality_checks_results_df.where(F.col("passed") == False).count()
+    print(f"Failed checks: {failed_checks}. Test passed: {failed_checks == 0}.")
 
 
 def print_dashboard():
