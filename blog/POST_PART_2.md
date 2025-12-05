@@ -46,20 +46,21 @@ Although, Soda provides pretty wide range of checks, not all of them are support
 - [User defined checks](https://docs.soda.io/sodacl-reference/user-defined)
 - [Validity metrics](https://docs.soda.io/sodacl-reference/validity-metrics)
 
-Firstly, we need to define a data set and a list of checks to perform in YAML:
+Firstly, we need to define data set and list of cheks to perform in YAML:
 ```yaml
 checks for flights:
   - {check condition}
       {check property}
 ```
-where `flights` is a variable that should match the data frame view name we previously created.
-Next, lets create checks per each category as it was done in the previous part.
+where `flights` is a should match with data frame view name we previously created. 
+
+Next, lets create checks per each category as it was done in previous part.
 
 #### Category: Accuracy & Validity
 Verification: 
 > All values of `TailNum` column are valid "tail number" combinations (see [Aircraft registration](https://en.wikipedia.org/wiki/Aircraft_registration))
 
-To implement this verification, we use [validity checks](https://docs.soda.io/sodacl-reference/validity-metrics#specify-valid-or-invalid-values) for regular expressions:
+To implement this verification, we use [validity checks](https://docs.soda.io/sodacl-reference/validity-metrics#specify-valid-or-invalid-values) for regular expression:
 ```yaml
   - invalid_count(TailNum) = 0: # `TailNum` is a column name in `flights` view. This line asserts 0 rows should fail condition. 
       valid regex: ^N(?:[1-9]\d{0,4}|[1-9]\d{0,3}[A-Z]|[1-9]\d{0,2}[A-Z]{2})$ # Regular expression to check.
@@ -82,7 +83,7 @@ Verification:
 
 This is a slightly tricky case because Soda does not provide a built-in check that directly matches this requirement.
 One option is to implement a check that asserts no rows exist that match the opposite condition.
-This is pretty easy to do by leveraging the [filtering feature](https://docs.soda.io/sodacl-reference/filters#configure-in-check-filters):
+This is pretty easy to do by leveraging [filtering feature](https://docs.soda.io/sodacl-reference/filters#configure-in-check-filters):
 ```yaml
   - row_count = 0:
       name: ActualElapsedTime that is more than AirTime
@@ -93,8 +94,8 @@ This is pretty easy to do by leveraging the [filtering feature](https://docs.sod
 Verification:
 > All values in columns `FlightDate`, `AirlineID`, `TailNum` are not null.
 
-Soda makes null checks easy with [Missing metrics](https://docs.soda.io/sodacl-reference/missing-metrics). Moreover, by "missing" Soda means a much wider spectrum of cases then just a `null`, such as `NaN` or empty strings. 
-To make it more interesting, let's also showcase severity levels in this example. See [Configure multiple alerts](https://docs.soda.io/sodacl-reference/optional-config#configure-multiple-alerts) on this topic.
+Soda make null checks easy with [Missing metrics](https://docs.soda.io/sodacl-reference/missing-metrics). Moreover, by "missing" Soda means much wider spectrum of cases then just a `null`, such as `NaN` or empty strings. 
+To make it more interesting, lets showcase also severity levels on this example. See [Configure multiple alerts](https://docs.soda.io/sodacl-reference/optional-config#configure-multiple-alerts) on this topic.
 ```yaml
   - missing_count(FlightDate) = 0: # No rows should be with missing `FlightDate` column.
       name: FlightDate is null
@@ -105,11 +106,11 @@ To make it more interesting, let's also showcase severity levels in this example
       warn: when > 0.5% # Warn if missing values percentage is between 0.5 to 5
       fail: when > 5% # Error if 5 and more.
 ```
-Checks for severity later will be visible in the final report.
+Checks severity later will be visible in final report.
 
 #### Consistency & Integrity
 Verification:
-> All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table, etc.
+>- All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table, etc.
 
 Soda provides [Reference checks](https://docs.soda.io/sodacl-reference/reference) exactly for this type of case.
 ```yaml
@@ -149,14 +150,14 @@ Soda provides a dedicated class of [freshness checks](https://docs.soda.io/sodac
 We can express this verification in a similar way to demonstrate its usage:
 ```yaml
   - freshness(FlightDate) < 11y:
-      name: Flights should not be older than 11 years.
+      name: Flights should not be older then 11 years.
 ```
 
 #### Reasonableness
 Verification:
 > Average speed calculated based on `AirTime` (in minutes) and `Distance` is close to the average cruise speed of modern aircraft - 885 KpH.
 
-Although Soda supports statistics checks, we need to precalculate data for the average. This job can still be easily done with [user defined checks](https://docs.soda.io/sodacl-reference/user-defined):
+Although Soda supports statistics checks, we need to precalculate data for average. This job is still can be easily done with [user defined checks](https://docs.soda.io/sodacl-reference/user-defined):
 ```yaml
   - avg_speed between 800 and 900: # checking `avg_speed` values is within expected boundaries
       name: Average speed should be close to 885 KpH
@@ -177,7 +178,7 @@ To make it work, we can leverage Spark's [percentile_approx](https://spark.apach
 
 #### Uniqueness
 Verification:
-> The proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID`, and `DestAirportID` is less than 10%.
+> Proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID`, and `DestAirportID` is less than 10%.
 
 To meet this verification `duplicate_percent` function from [Duplicate checks](https://docs.soda.io/soda-cl-overview/quick-start-sodacl#duplicate-check) is all what we need:
 ```yaml
@@ -185,7 +186,7 @@ To meet this verification `duplicate_percent` function from [Duplicate checks](h
       name: Flight duplicates are less than 10%
 ```
 
-This was the last piece. Having SodaCL checks in place we can now invoke them. 
+This was last piece. Having SodaCL checks in place we can now invoke them. 
 
 ### Invoke
 The following snippet demonstrates how easy it is to set up and run Soda locally:
@@ -282,13 +283,13 @@ class CustomSampler(Sampler):
 ```
 
 ### Report
-To get evaluation details as a report, we can simply get logs:
+To get evaluation details as a report, we can get simply logs:
 ```python
 scan.set_verbose(False)
 logs_text = scan.get_logs_text()
 ```
 
-Saved samples, we can now collect and print at the end with the help of Pandas:
+Saved samples we can now collect and print at the end with help of Pandas:
 ```python
 csv_files = list(Path(SODA_SAMPLES_FOLDER).glob("*.csv"))
 df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
@@ -296,7 +297,8 @@ print("Samples:")
 print(df.to_string())
 ```
 
-And at the end, we can get this nice report:
+And at the end we can get this nice report:
+
 ```text
 Soda evaluation report:
 Soda Core 3.5.6
@@ -359,5 +361,5 @@ Samples:
 ```
 
 # Conclusion
-In this post, we covered Soda, another powerful tool for data quality evaluation. All the code you find in this [GitHub repository](https://github.com/IvannKurchenko/blog-data-quality-on-spark) 
-In the next part, we will discover [DQX](https://databrickslabs.github.io/dqx/) library developed by Databricks.
+At this post, we covered Soda, another powerful tool for data quality evaluation. All the code from you find in this [GitHub repository](https://github.com/IvannKurchenko/blog-data-quality-on-spark) 
+In the next part we will discover [DQX](https://databrickslabs.github.io/dqx/) library developed by Databricks.
