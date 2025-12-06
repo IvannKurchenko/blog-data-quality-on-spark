@@ -2,7 +2,7 @@ import org.apache.spark.sql.{SparkSession, DataFrame}
 import org.apache.spark.sql.functions._
 
 object Constants {
-  val STATE_CODES: List[String] = List(
+  val StateCodes: Array[String] = Array(
     "AL", "KY", "OH",
     "AK", "LA", "OK",
     "AZ", "ME", "OR",

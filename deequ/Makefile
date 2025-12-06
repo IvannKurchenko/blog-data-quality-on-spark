@@ -40,8 +40,8 @@ check:
 	@sbt scalafmtCheck
 	@echo "[CHECK] Check complete"
 
-run:
-	@sbt run
+run-checks:
+	@sbt "runMain EvaluationDeequChecks"
 
 clean:
 	rm -rf target project/target
