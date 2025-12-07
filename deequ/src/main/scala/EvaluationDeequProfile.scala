@@ -5,6 +5,22 @@ import scala.util.{Failure, Success, Using}
 
 object EvaluationDeequProfile {
 
+  implicit class ColumnProfilesOps(result: ColumnProfiles) {
+    def print(columnName: String): Unit = {
+      val profile = result.profiles(columnName)
+      println(
+        s"""
+           |`$columnName` profile:
+           |  Profile class: ${profile.getClass.getSimpleName}
+           |  Completeness: ${profile.completeness}
+           |  Approximate Num DistinctValues: ${profile.approximateNumDistinctValues}
+           |  Data type: ${profile.dataType}
+           |  Histogram (short): ${profile.histogram.map(_.values.toList.take(3).mkString(";")).getOrElse("<empty>")}
+           |""".stripMargin
+      )
+    }
+  }
+
   def main(args: Array[String]): Unit = {
     println("Deequ evaluation starting...")
     val sparkSessionFactory = new SparkSessionFactory
@@ -15,18 +31,17 @@ object EvaluationDeequProfile {
   }
 
   def evaluate(spark: SparkSession): Unit = {
-
     println("Reading main dataframes...")
 
     val airlineDataset = new AirlineDataset(spark)
-    val faaDataset = new FaaDataset(spark)
-
-    val flightsDataFrame = airlineDataset
-      .onTimeOnTimePerformance20161Df
+    val flightsDataFrame = airlineDataset.onTimeOnTimePerformance20161Df
     val result = ColumnProfilerRunner()
       .onData(flightsDataFrame)
       .run()
 
-    print(ColumnProfiles.toJson(result.profiles.values.toSeq))
+    result.print("AirlineID") // Profiled as regular numeric column
+    result.print("DepDelay") // Correctly identified as numeric and profiled
+    result.print("OriginState") // string with histogram.
+    result.print("FlightDate") // date time is not supported
   }
 }

@@ -43,6 +43,12 @@ check:
 run-checks:
 	@sbt "runMain EvaluationDeequChecks"
 
+run-profile:
+	@sbt "runMain EvaluationDeequProfile"
+
+run-suggestions:
+	@sbt "runMain EvaluationDequeSuggestions"
+
 clean:
 	rm -rf target project/target
 

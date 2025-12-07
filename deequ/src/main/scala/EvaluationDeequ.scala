@@ -55,6 +55,7 @@ object EvaluationDeequ {
         // compute metrics
         .run()
     }
+
     val metricsDataFrame = AnalyzerContext.successMetricsAsDataFrame(spark, analysisResult)
     metricsDataFrame.orderBy(col("entity"), col("instance")).show()
 
