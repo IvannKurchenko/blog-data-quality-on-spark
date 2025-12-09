@@ -49,6 +49,9 @@ run-profile:
 run-suggestions:
 	@sbt "runMain EvaluationDequeSuggestions"
 
+run-analyzers:
+	@sbt "runMain EvaluationDeequAnalyzers"
+
 clean:
 	rm -rf target project/target
 

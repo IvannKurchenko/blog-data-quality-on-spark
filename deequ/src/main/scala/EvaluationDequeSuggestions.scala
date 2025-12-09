@@ -1,10 +1,10 @@
 import com.amazon.deequ.suggestions.{ConstraintSuggestionResult, ConstraintSuggestionRunner, Rules}
 import org.apache.spark.sql.SparkSession
 
-import scala.util.{Failure, Success, Using}
-
-object EvaluationDequeSuggestions {
-
+object EvaluationDequeSuggestions extends EvaluationApp {
+  /**
+   * Tiny extension over profile result to pretty print results concisely.
+   */
   implicit class ConstraintSuggestionResultOps(result: ConstraintSuggestionResult) {
     def printSuggestions(column: String): Unit = {
       result.constraintSuggestions.get(column).foreach { suggestions =>
@@ -13,15 +13,6 @@ object EvaluationDequeSuggestions {
           println(s"  Description: ${suggestion.description}, Code: ${suggestion.codeForConstraint}")
         }
       }
-    }
-  }
-
-  def main(args: Array[String]): Unit = {
-    println("Deequ evaluation starting...")
-    val sparkSessionFactory = new SparkSessionFactory
-    Using(sparkSessionFactory.createSession)(evaluate) match {
-      case Failure(exception) => exception.printStackTrace()
-      case Success(_) => println("Evaluation finished successfully")
     }
   }
 

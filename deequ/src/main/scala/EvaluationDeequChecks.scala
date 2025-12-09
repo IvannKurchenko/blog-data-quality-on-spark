@@ -1,46 +1,13 @@
 import Constants.StateCodes
-import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import org.apache.spark.sql.SparkSession
+import com.amazon.deequ.{VerificationResult, VerificationSuite}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 
-import scala.util.{Failure, Success, Using}
-
-object EvaluationDeequChecks {
-
-  def main(args: Array[String]): Unit = {
-    println("Deequ evaluation starting...")
-    val sparkSessionFactory = new SparkSessionFactory
-    Using(sparkSessionFactory.createSession)(evaluate) match {
-      case Failure(exception) => exception.printStackTrace()
-      case Success(_) => println("Evaluation finished successfully")
-    }
-  }
-
+object EvaluationDeequChecks extends EvaluationApp {
   def evaluate(spark: SparkSession): Unit = {
-    println("Reading main dataframes...")
-
-    val airlineDataset = new AirlineDataset(spark)
-    val faaDataset = new FaaDataset(spark)
-
-    val flightsDataFrame = airlineDataset.onTimeOnTimePerformance20161Df.as("flights")
-    val airlineDataFrame = airlineDataset.lAirlineIdDf.as("airlines")
-    val faaDataFrame = faaDataset.allTailNumbersDf.as("faa")
-
-    val testDataFrame = {
-      flightsDataFrame
-        .withColumn("Speed", col("Distance") / (col("AirTime") / lit(60)))
-        .join(airlineDataFrame, col("flights.AirlineID") === col("airlines.Code"), joinType = "left")
-        .join(faaDataFrame, col("flights.TailNum") === col("faa.FaaTailNum"), joinType = "left")
-    }
-
-    val allChecks = createAccuracyChecks() ++
-      createCompletnessChecks() ++
-      createConsistencyChecks() ++
-      createCreateCredibilityChecks() ++
-      createCurrentnessChecks() ++
-      createReasonablenessChecks() ++
-      createUniquenessChecks()
+    val testDataFrame = createTestDataFrame(spark)
+    val allChecks = createAllChecks()
 
     val verificationResult: VerificationResult = {
       VerificationSuite()
@@ -51,7 +18,33 @@ object EvaluationDeequChecks {
 
     val resultDataFrame = VerificationResult.checkResultsAsDataFrame(spark, verificationResult)
     resultDataFrame.show()
+    // todo - final result: passed or failed.
     println(s"Verification result status: ${verificationResult.status}")
+  }
+
+  private def createTestDataFrame(spark: SparkSession): DataFrame = {
+    println("Reading main dataframes...")
+    val airlineDataset = new AirlineDataset(spark)
+    val faaDataset = new FaaDataset(spark)
+
+    val flightsDataFrame = airlineDataset.onTimeOnTimePerformance20161Df.as("flights")
+    val airlineDataFrame = airlineDataset.lAirlineIdDf.as("airlines")
+    val faaDataFrame = faaDataset.allTailNumbersDf.as("faa")
+
+    flightsDataFrame
+      .withColumn("Speed", col("Distance") / (col("AirTime") / lit(60)))
+      .join(airlineDataFrame, col("flights.AirlineID") === col("airlines.Code"), joinType = "left")
+      .join(faaDataFrame, col("flights.TailNum") === col("faa.FaaTailNum"), joinType = "left")
+  }
+
+  private def createAllChecks() = {
+    createAccuracyChecks() ++
+      createCompletnessChecks() ++
+      createConsistencyChecks() ++
+      createCreateCredibilityChecks() ++
+      createCurrentnessChecks() ++
+      createReasonablenessChecks() ++
+      createUniquenessChecks()
   }
 
   /**
@@ -73,7 +66,7 @@ object EvaluationDeequChecks {
   /**
    * Completeness checks.
    */
-  def createCompletnessChecks() = {
+  def createCompletnessChecks(): Seq[Check] = {
     Seq(
       Check(CheckLevel.Error, "All values in columns `FlightDate`, `AirlineID`, `TailNum` are not null.")
         .areComplete(Seq("FlightDate", "AirlineID", "TailNum"))
@@ -112,12 +105,7 @@ object EvaluationDeequChecks {
 
   /**
    * Reasonableness checks.
-   * Average speed calculated based on `AirTime` (in minutes) and `Distance` is close to the average cruise
-   * speed of modern aircraft - 885 KpH.
-   *
-   * 90th percentile of `DepDelay` is under 60 minutes;
    */
-
   def createReasonablenessChecks(): Seq[Check] = {
     Seq(
       Check(CheckLevel.Error, "Average speed is close 885 KpH.")
@@ -130,7 +118,6 @@ object EvaluationDeequChecks {
 
   /**
    * Uniqueness checks.
-   * The proportion of duplicates by `FlightDate`, `AirlineId`, `TailNum`, `OriginAirportID`, and `DestAirportID` is less than 10%.
    */
   def createUniquenessChecks() : Seq[Check] = {
     Seq(

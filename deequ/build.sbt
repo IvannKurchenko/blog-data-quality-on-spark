@@ -3,7 +3,6 @@ name := "deequ-evaluation"
 version := "0.1.0"
 
 scalaVersion := "2.12.20"
-
 libraryDependencies ++= Seq(
   "org.mariadb.jdbc" % "mariadb-java-client" % "3.5.6",
   "org.apache.spark" %% "spark-core" % "3.5.0" % "provided",
@@ -11,8 +10,10 @@ libraryDependencies ++= Seq(
   "com.amazon.deequ" % "deequ" % "2.0.9-spark-3.5"
 )
 
+// Forking main process for java options to take effect
 fork := true
 
+// Relaxing some security constraints for Spark to run on Java
 javaOptions ++= Seq(
   "-XX:+IgnoreUnrecognizedVMOptions",
   "--add-opens=java.base/java.lang=ALL-UNNAMED",
