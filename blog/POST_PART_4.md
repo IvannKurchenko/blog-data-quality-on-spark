@@ -421,9 +421,22 @@ object EvaluationDequeSuggestions extends EvaluationApp {
 ```
 Which will output the following suggestions:
 ```text
-TODO
+Unable to map type DateType
+AirlineID suggestions: 
+  Description: 'AirlineID' is not null, Code: .isComplete("AirlineID")
+  Description: 'AirlineID' has value range '19393', '19805', '19790', '20304', '20366', '19977', '20409', '19930', '20416', '20436', '19690', '21171', Code: .isContainedIn("AirlineID", Array("19393", "19805", "19790", "20304", "20366", "19977", "20409", "19930", "20416", "20436", "19690", "21171"))
+  Description: 'AirlineID' has value range '19393', '19805', '19790', '20304', '20366', '19977', '20409' for at least 90.0% of values, Code: .isContainedIn("AirlineID", Array("19393", "19805", "19790", "20304", "20366", "19977", "20409"), _ >= 0.9, Some("It should be above 0.9!"))
+  Description: 'AirlineID' has no negative values, Code: .isNonNegative("AirlineID")
+DepDelay suggestions: 
+  Description: 'DepDelay' has less than 3% missing values, Code: .hasCompleteness("DepDelay", _ >= 0.97, Some("It should be above 0.97!"))
+OriginState suggestions: 
+  Description: 'OriginState' is not null, Code: .isComplete("OriginState")
+  Description: 'OriginState' has value range 'CA', 'TX', 'FL', 'GA', 'IL', 'NY', 'CO', 'AZ', 'NV', 'NC', 'MI', 'VA', 'WA', 'MN', 'MA', 'NJ', 'UT', 'PA', 'HI', 'MO', 'MD', 'TN', 'OH', 'LA', 'OR', 'WI', 'IN', 'AK', 'PR', 'OK', 'KY', 'SC', 'AL', 'ID', 'NE', 'NM', 'CT', 'AR', 'MT', 'ND', 'RI', 'MS', 'IA', 'WY', 'KS', 'SD', 'VI', 'NH', 'ME', 'VT', 'WV', 'TT', Code: .isContainedIn("OriginState", Array("CA", "TX", "FL", "GA", "IL", "NY", "CO", "AZ", "NV", "NC", "MI", "VA", "WA", "MN", "MA", "NJ", "UT", "PA", "HI", "MO", "MD", "TN", "OH", "LA", "OR", "WI", "IN", "AK", "PR", "OK", "KY", "SC", "AL", "ID", "NE", "NM", "CT", "AR", "MT", "ND", "RI", "MS", "IA", "WY", "KS", "SD", "VI", "NH", "ME", "VT", "WV", "TT"))
+  Description: 'OriginState' has value range 'CA', 'TX', 'FL', 'GA', 'IL', 'NY', 'CO', 'AZ', 'NV', 'NC', 'MI', 'VA', 'WA', 'MN', 'MA', 'NJ', 'UT', 'PA', 'HI', 'MO', 'MD', 'TN', 'OH', 'LA' for at least 90.0% of values, Code: .isContainedIn("OriginState", Array("CA", "TX", "FL", "GA", "IL", "NY", "CO", "AZ", "NV", "NC", "MI", "VA", "WA", "MN", "MA", "NJ", "UT", "PA", "HI", "MO", "MD", "TN", "OH", "LA"), _ >= 0.9, Some("It should be above 0.9!"))
+FlightDate suggestions: 
+  Description: 'FlightDate' is not null, Code: .isComplete("FlightDate")
 ```
-TODO: which one are new?
+Interestingly to find that 90% of flights originates from less than a half of state, so Deeque suggested this as well.
 
 ### Conclusion
 Deequ is probably not the most convenient, feature rich and up-to-date library for data quality testing available for Spark. 

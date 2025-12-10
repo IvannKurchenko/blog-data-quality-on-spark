@@ -12,8 +12,7 @@ object EvaluationDequeSuggestions extends EvaluationApp {
         suggestions.foreach { suggestion =>
           val description = suggestion.description
           val code = suggestion.codeForConstraint
-          val shortDescription = if(description.length > 20) description.take(20) + "..." else description
-          println(s"  Description: $shortDescription, Code: $code")
+          println(s"  Description: $description, Code: $code")
         }
       }
     }
