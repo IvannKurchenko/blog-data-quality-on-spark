@@ -10,15 +10,16 @@ object EvaluationDequeSuggestions extends EvaluationApp {
       result.constraintSuggestions.get(column).foreach { suggestions =>
         println(f"$column suggestions: ")
         suggestions.foreach { suggestion =>
-          println(s"  Description: ${suggestion.description}, Code: ${suggestion.codeForConstraint}")
+          val description = suggestion.description
+          val code = suggestion.codeForConstraint
+          val shortDescription = if(description.length > 20) description.take(20) + "..." else description
+          println(s"  Description: $shortDescription, Code: $code")
         }
       }
     }
   }
 
   def evaluate(spark: SparkSession): Unit = {
-    println("Reading main dataframes...")
-
     val airlineDataset = new AirlineDataset(spark)
     val flightsDataFrame = airlineDataset.onTimeOnTimePerformance20161Df
     val suggestionResult = {

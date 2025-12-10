@@ -1,4 +1,4 @@
-import com.amazon.deequ.profiles.{ColumnProfilerRunner, ColumnProfiles}
+import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfilerRunner, ColumnProfiles}
 import org.apache.spark.sql.SparkSession
 
 object EvaluationDeequProfile extends EvaluationApp {
@@ -8,7 +8,7 @@ object EvaluationDeequProfile extends EvaluationApp {
    */
   implicit class ColumnProfilesOps(result: ColumnProfiles) {
     def print(columnName: String): Unit = {
-      val profile = result.profiles(columnName)
+      val profile: ColumnProfile = result.profiles(columnName)
       println(
         s"""
            |`$columnName` profile:
@@ -23,19 +23,17 @@ object EvaluationDeequProfile extends EvaluationApp {
   }
 
   override def evaluate(spark: SparkSession): Unit = {
-    println("Reading main dataframes...")
-
     val airlineDataset = new AirlineDataset(spark)
     val flightsDataFrame = airlineDataset.onTimeOnTimePerformance20161Df
 
-    // All profiling is executed in the this snippet
+    // All profiling is executed in the snippet
     val result = ColumnProfilerRunner()
       .onData(flightsDataFrame)
       .run()
 
-    result.print("AirlineID") // Profiled as regular numeric column;
-    result.print("DepDelay") // Correctly identified as numeric and profiled
-    result.print("OriginState") // string with histogram.
-    result.print("FlightDate") // Date time is not supported
+    result.print("AirlineID")
+    result.print("DepDelay")
+    result.print("OriginState")
+    result.print("FlightDate")
   }
 }

@@ -5,8 +5,6 @@ import org.apache.spark.sql.functions.{col, lit}
 
 object EvaluationDeequAnalyzers extends EvaluationApp {
   def evaluate(spark: SparkSession): Unit = {
-    println("Reading main dataframes...")
-
     val airlineDataset = new AirlineDataset(spark)
     val faaDataset = new FaaDataset(spark)
 
@@ -37,17 +35,17 @@ object EvaluationDeequAnalyzers extends EvaluationApp {
         .addAnalyzer(Completeness("TailNum"))
 
         // Analyze columns for "Consistency checks"
-        .addAnalyzer(Completeness("airlines.Code"))
+        .addAnalyzer(Completeness("Code"))
 
         // Analyze columns for "Currentness / Currency"
-        .addAnalyzer(Compliance("FlightDate", "FlightDate` > to_date(2016-01-01)"))
+        .addAnalyzer(Compliance("FlightDate", "FlightDate > to_date('2016-01-01')"))
 
         // Analyze columns for "Reasonableness checks"
-        /*.addAnalyzer(Mean("Speed"))
+        .addAnalyzer(Mean("Speed"))
         .addAnalyzer(ApproxQuantile("DepDelay", 0.9))
 
         // Analyze columns for "Uniqueness checks"
-        .addAnalyzer(Distinctness(Seq("FlightDate", "AirlineId", "TailNum", "OriginAirportID", "DestAirportID")))*/
+        .addAnalyzer(Distinctness(Seq("FlightDate", "AirlineId", "TailNum", "OriginAirportID", "DestAirportID")))
         .run()
     }
 

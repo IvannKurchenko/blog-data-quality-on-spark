@@ -7,8 +7,14 @@ import org.apache.spark.sql.functions._
 object EvaluationDeequChecks extends EvaluationApp {
   def evaluate(spark: SparkSession): Unit = {
     val testDataFrame = createTestDataFrame(spark)
-    val allChecks = createAllChecks()
+    checkTestDataFrame(spark, testDataFrame)
+  }
 
+  /**
+   * Main method with testing - create `VerificationSuite` for dataframe and checks, run it and print rest.
+   */
+  private def checkTestDataFrame(spark: SparkSession, testDataFrame: DataFrame): Unit = {
+    val allChecks = createAllChecks()
     val verificationResult: VerificationResult = {
       VerificationSuite()
         .onData(testDataFrame)
@@ -16,14 +22,14 @@ object EvaluationDeequChecks extends EvaluationApp {
         .run()
     }
 
-    val resultDataFrame = VerificationResult.checkResultsAsDataFrame(spark, verificationResult)
-    resultDataFrame.show()
-    // todo - final result: passed or failed.
+    VerificationResult.checkResultsAsDataFrame(spark, verificationResult).show()
     println(s"Verification result status: ${verificationResult.status}")
   }
 
+  /**
+   * Create data-frame to test with some pre-calculations
+   */
   private def createTestDataFrame(spark: SparkSession): DataFrame = {
-    println("Reading main dataframes...")
     val airlineDataset = new AirlineDataset(spark)
     val faaDataset = new FaaDataset(spark)
 
@@ -47,9 +53,7 @@ object EvaluationDeequChecks extends EvaluationApp {
       createUniquenessChecks()
   }
 
-  /**
-   * Accuracy & Validity checks
-   */
+  /** Accuracy & Validity checks */
   def createAccuracyChecks(): Seq[Check] = {
     Seq(
       Check(CheckLevel.Error, "All values of the `TailNum` column are valid 'tail number' combinations")
@@ -63,9 +67,7 @@ object EvaluationDeequChecks extends EvaluationApp {
     )
   }
 
-  /**
-   * Completeness checks.
-   */
+  /** Completeness checks. */
   def createCompletnessChecks(): Seq[Check] = {
     Seq(
       Check(CheckLevel.Error, "All values in columns `FlightDate`, `AirlineID`, `TailNum` are not null.")
@@ -73,9 +75,7 @@ object EvaluationDeequChecks extends EvaluationApp {
     )
   }
 
-  /**
-   * Consistency checks
-   */
+  /** Consistency checks */
   def createConsistencyChecks(): Seq[Check] = {
     Seq(
       Check(CheckLevel.Error, "All values in column `AirlineID` match `Code` in `L_AIRLINE_ID` table")
@@ -83,9 +83,7 @@ object EvaluationDeequChecks extends EvaluationApp {
     )
   }
 
-  /**
-   * Credibility / Accuracy checks.
-   */
+  /** Credibility / Accuracy checks. */
   def createCreateCredibilityChecks(): Seq[Check] = {
     Seq(
       Check(CheckLevel.Error, "At least 80% of `TailNum` column values can be found in `Federal Aviation Agency Database`")
@@ -103,9 +101,7 @@ object EvaluationDeequChecks extends EvaluationApp {
     )
   }
 
-  /**
-   * Reasonableness checks.
-   */
+  /** Reasonableness checks. */
   def createReasonablenessChecks(): Seq[Check] = {
     Seq(
       Check(CheckLevel.Error, "Average speed is close 885 KpH.")
