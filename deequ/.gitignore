@@ -1,0 +1,40 @@
+# ---- PyCharm / IntelliJ ----
+.idea/
+*.iml
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+
+# SBT
+target/
+project/target/
+.bloop/
+.metals/
+.bsp
+
+# ---- Apache Spark ----
+# Local Spark checkpoints & logs
+spark-warehouse/
+metastore_db/
+derby.log
+# PySpark temp files
+*.crc
+# Spark event logs
+spark-events/
+
+# ---- Miscellaneous ----
+*.sqlite
+*.db
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.jar
+.local
+
+src/artifacts
+data_faa
+
+.local/
