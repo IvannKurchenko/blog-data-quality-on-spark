@@ -1,37 +1,45 @@
-## Data Quality on Spark, Part 3: Deequ
+## Data Quality on Spark, Part 4: Deequ
 
 ### Introduction
+
 In this series of blog posts, we explore Data Quality from both a theoretical perspective and a practical implementation standpoint using the Spark framework. We also compare several tools designed to support Data Quality assessments.
-Although the commercial market for Data Quality solutions is broad and full of capable products, the focus of this series is on open-source tools.
-In this part, we continue exploring [Airline's](https://relational.fel.cvut.cz/dataset/Airline) dataset quality by the same Data Quality checks via [DQX](https://github.com/awslabs/deequ) framework.
+
+Although the commercial market for Data Quality solutions is broad and full of capable products, the focus of this series is on open-source tools.  
+In this part, we continue exploring the [Airline](https://relational.fel.cvut.cz/dataset/Airline) dataset using the same Data Quality checks, this time with the [Deequ](https://github.com/awslabs/deequ) library.
 
 Previous parts:
+
 - [Data Quality on Spark, Part 1: GreatExpectations](https://medium.com/gitconnected/data-quality-on-spark-part-1-greatexpectations-fd4ffa126ca0)
 - [Data Quality on Spark, Part 2: Soda](https://medium.com/gitconnected/data-quality-on-spark-part-2-soda-97d5d32e2d8b)
 - [Data Quality on Spark, Part 3: DQX](https://medium.com/gitconnected/data-quality-on-spark-part-3-dqx-f0335b8ff07d)
 
 ### Deequ
-Deeque, as documentation positions it, is:
-> Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets. 
 
-This a library that has been built by Amazon for Spark in short. Apart from just regular checks and verifications it ships interesting features like profiling, analyzers and suggestions that will be demonstrated later.
-Main library is written in Scala, although [Python wrapper](Python wrapper available at: https://github.com/awslabs/python-deequ) is also available.
-To keep focus on single implementation, further examples will be shown in Scala.
+Deequ, as the documentation describes it, is:
+
+> Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets.
+
+In short, it is a Spark library built by Amazon for expressing and evaluating data quality checks at scale. Besides “regular” checks and verifications, it ships some interesting features such as profiling, analyzers, and automatic suggestions, which will be demonstrated later in this post.
+The main library is written in Scala, although a [Python wrapper](https://github.com/awslabs/python-deequ) (PyDeequ) is also available.  
+To keep the focus on a single implementation, the examples in this post are written in Scala.
 
 ### Setup
-To proceed with further working with the library, you'd need to have installed JDK 17, sbt of any version and Scala 2.12.
-Some notes regarding other software version compatibility:
-- Scala 2.13 is not yet supported ([see GitHub issue](https://github.com/awslabs/deequ/issues/642));
-- Spark 3.5 is the latest supported version so far ([see installation instructions](https://github.com/awslabs/deequ?tab=readme-ov-file#requirements-and-installation)); 
+To follow along with the examples, you need JDK 17, sbt (any recent version), and Scala 2.12.
+Some notes on version compatibility:
 
-After this is in place we can define our `build.sbt` file:
+- Scala 2.13 is **not** yet officially supported by Deequ at the time of writing ([see GitHub issue](https://github.com/awslabs/deequ/issues/642)).
+- Spark 3.5 is the latest Spark major version with published Deequ artifacts ([see installation instructions](https://github.com/awslabs/deequ?tab=readme-ov-file#requirements-and-installation)).
+
+After installing the prerequisites, we can define our `build.sbt` file:
+
 ```scala
 scalaVersion := "2.12.20"
+
 libraryDependencies ++= Seq(
   "org.mariadb.jdbc" % "mariadb-java-client" % "3.5.6",
   "org.apache.spark" %% "spark-core" % "3.5.0" % "provided",
-  "org.apache.spark" %% "spark-sql" % "3.5.0" % "provided",
-  "com.amazon.deequ" % "deequ" % "2.0.9-spark-3.5"
+  "org.apache.spark" %% "spark-sql"  % "3.5.0" % "provided",
+  "com.amazon.deequ" %  "deequ"     % "2.0.9-spark-3.5"
 )
 
 // Forking main process for java options to take effect
@@ -58,7 +66,6 @@ javaOptions ++= Seq(
   "-Djdk.reflect.useDirectMethodHandle=false"
 )
 ```
-After having this in place we can review the library capabilities per module using the same [Airline's](https://relational.fel.cvut.cz/dataset/Airline) database.
 
 ### Profiling
 Profiling provides possibility to get high level view of a dataset without prior heavy lifting.
@@ -446,6 +453,7 @@ At least these reasons worth having a look at library and related paper.
 All the code you find in this [GitHub repository](https://github.com/IvannKurchenko/blog-data-quality-on-spark). In the next part, we will discover [pandera](https://pandera.readthedocs.io/en/stable/).
 
 ### References
+
 - [Test data quality at scale with Deequ](https://aws.amazon.com/blogs/big-data/test-data-quality-at-scale-with-deequ/)
 - [Deequ GitHub](https://github.com/awslabs/deequ)
 - [Streaming Data Quality using AWS Deequ](https://www.databricks.com/notebooks/streaming-data-quality.html)
