@@ -19,6 +19,7 @@ install:
 	@uv lock
 	@echo "[INSTALL] Syncing dependencies..."
 	@uv sync
+	@uv sync --extra dev
 	@echo "[INSTALL] Installation complete"
 
 download-maria-db-driver:

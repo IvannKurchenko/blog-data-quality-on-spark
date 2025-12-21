@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 
+
 class SparkSessionManager:
     def __init__(self):
         self.spark = None
@@ -114,10 +115,9 @@ class FaaDataset:
         master_df = self.master_df()
         dereg_df = self.dereg_df()
 
-        tail_num_column = F.concat(F.lit('N'), F.col('N-NUMBER')).alias('FaaTailNum')
+        tail_num_column = F.concat(F.lit("N"), F.col("N-NUMBER")).alias("FaaTailNum")
         faa_tail_numbers = (
-            master_df
-            .select(tail_num_column)
+            master_df.select(tail_num_column)
             .union(dereg_df.select(tail_num_column))
             .distinct()
         )
