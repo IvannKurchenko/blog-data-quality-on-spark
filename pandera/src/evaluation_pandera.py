@@ -67,7 +67,7 @@ def create_validate_schema() -> DataFrameSchema:
         {
             "TailNum": create_tail_num_column(),
             "OriginState": create_origin_state_column(),
-            "AirTime": create_airtime_column(),
+            "ActualElapsedTime": create_actual_elapsed_time_column(),
             "FlightDate": create_flight_date_column(),
             "AirlineID": create_airline_id_column(),
             "AirlineCode": create_airline_code_column(),
@@ -155,7 +155,7 @@ def average_within_boundaries(pyspark_obj, *, bottom_limit: int, upper_limit: in
             data_frame.select(column.alias(column_name))
             .where(F.col(column_name) >= F.lit(bottom_limit))
             .where(F.col(column_name) <= F.lit(upper_limit))
-            .count() == 0
+            .count() > 0
     )
     return condition
 
@@ -253,14 +253,14 @@ def create_flight_date_column() -> pa.Column:
 
 
 @register_check_method
-def greater_then_column(pyspark_obj, *, limit) -> bool:
+def greater_than_column(pyspark_obj, *, limit) -> bool:
     data_frame: DataFrame = pyspark_obj.dataframe
     condition_col = F.col(pyspark_obj.column_name) > F.col(limit)
     condition = data_frame.filter(~condition_col).count() == 0
     return condition
 
 
-def create_airtime_column() -> pa.Column:
+def create_actual_elapsed_time_column() -> pa.Column:
     return pa.Column(
         dtype=T.DoubleType(),
         nullable=False,
@@ -268,9 +268,9 @@ def create_airtime_column() -> pa.Column:
         name="ActualElapsedTime",
         checks=[
             Check(
-                check_fn=greater_then_column,
+                check_fn=greater_than_column,
                 limit="AirTime",
-                element_wise=True,
+                element_wise=False,
                 name="ActualElapsedTime is more than AirTime",
                 description="ActualElapsedTime is more than AirTime",
                 error="ActualElapsedTime that is less than AirTime",
